@@ -1,145 +1,141 @@
-const token = localStorage.getItem("token");
-import {authorizedFetch} from "./securityMethods.js";
-document.addEventListener("DOMContentLoaded", () => {
-    const app = document.getElementById("app");
-    renderLandingPage(app);
-});
+import {isTokenExpired} from "./securityMethods.js";
 
-function createElement(tag, attrs = {}, children = []) {
-    const el = document.createElement(tag);
-    Object.entries(attrs).forEach(([key, val]) => {
-        if (key === "class") el.className = val;
-        else if (key === "text") el.textContent = val;
-        else el.setAttribute(key, val);
-    });
-    children.forEach(child => {
-        if (typeof child === "string") el.appendChild(document.createTextNode(child));
-        else if (child instanceof Node) el.appendChild(child);
-    });
-    return el;
+const app = document.getElementById("app")
+
+
+
+export async function loadLandingPage() {
+    app.innerHTML = "";
+
+    // --- HEADER ---
+    const header = document.createElement("div");
+    header.classList.add("header");
+
+    // Logo
+    const logo = document.createElement("img");
+    logo.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/183px-Bitcoin.svg.png";
+    logo.alt = "Crypto Logo";
+    logo.classList.add("header-logo");
+    header.appendChild(logo);
+
+    // Button holder
+    const headerButtonHolder = document.createElement("div");
+    headerButtonHolder.classList.add("header-buttons");
+
+    if (isTokenExpired()) {
+        const loginSignUpBtn = document.createElement("button");
+        loginSignUpBtn.textContent = "Login / Signup";
+        loginSignUpBtn.classList.add("header-btn", "login-btn");
+        headerButtonHolder.appendChild(loginSignUpBtn);
+    } else {
+        const goToDashBoardButton = document.createElement("button");
+        goToDashBoardButton.textContent = "Dashboard";
+        goToDashBoardButton.classList.add("header-btn", "dashboard-btn");
+        headerButtonHolder.appendChild(goToDashBoardButton);
+    }
+
+    header.appendChild(headerButtonHolder);
+    app.appendChild(header);
+
+
+    // --- HERO SECTION ---
+
+    const heroSection = document.createElement("div");
+    heroSection.classList.add("hero-section");
+
+
+        // Big text
+    const heroTitle = document.createElement("h1");
+    heroTitle.textContent = "Gustavo Investor Bot";
+    heroTitle.classList.add("hero-title");
+// crypto wheel
+    heroSection.appendChild(heroTitle);
+
+        // Call-to-action button
+    const ctaButton = document.createElement("button");
+    ctaButton.classList.add("cta-button");
+
+    if (isTokenExpired()) {
+        ctaButton.textContent = "Start Today";
+        ctaButton.classList.add("start-btn");
+    } else {
+        ctaButton.textContent = "Go to Dashboard";
+        ctaButton.classList.add("dashboard-btn");
+    }
+
+    //div til hjul og description
+    const midHeroDiv = document.createElement("div")
+    midHeroDiv.classList.add("mid-hero-div")
+    const cryptoWheel = await create3DCryptoWheel();
+    midHeroDiv.appendChild(cryptoWheel)
+    const description = document.createElement("p")
+    description.textContent = "Indtast din Binance api-nøgle → lad Gustavo handle for dig. Automatisk. Intelligent. 100% hands-free. 🔥 💸 😱";
+    midHeroDiv.appendChild(description)
+
+
+// Append
+
+    heroSection.appendChild(midHeroDiv)
+    heroSection.appendChild(ctaButton);
+    app.appendChild(heroSection);
 }
 
-async function renderLandingPage(app) {
-    app.innerHTML = ""; // clear old content
+export async function create3DCryptoWheel() {
+    const wheelContainer = document.createElement("div");
+    wheelContainer.classList.add("crypto-wheel");
 
-    // Navbar
-    const logo = createElement("div", { class: "logo", text: "CryptoAIInvestor" });
-    const loginBtn = createElement("button", { id: "loginBtn", class: "btn-secondary", text: "Login" });
-    const startBtn = createElement("button", { id: "startBtn", class: "btn-primary", text: "Get Started" });
-    startBtn.addEventListener("click",async function(){
+    const wheel = document.createElement("div");
+    wheel.classList.add("wheel");
+    wheelContainer.appendChild(wheel);
 
-      const response =  await authorizedFetch("http://localhost:8080/api/auth/me")
+    // --- Fetch cryptos ---
+    const response = await fetch("http://localhost:8080/api/cryptos/frontenddto");
+    const cryptoList = await response.json();
 
-        console.log(await response.json())
+    // --- Create a card for each crypto ---
+    cryptoList.forEach((crypto) => {
+        const card = document.createElement("div");
+        card.classList.add("coin-card");
+        card.dataset.symbol = crypto.ticker.toLowerCase(); // ✅ Lowercase match for Binance
 
-    })
-    const nav = createElement("nav", { class: "nav-links" }, [loginBtn, startBtn]);
-    const header = createElement("header", { class: "navbar" }, [logo, nav]);
-
-    // Hero
-    const heroTitle = createElement("h1", { text: "The future of crypto investing." });
-    const heroText = createElement("p", { text: "AI-powered insights. Smarter trades. Automated strategies. Your crypto journey starts here." });
-    const ctaBtn = createElement("button", { id: "ctaBtn", class: "btn-primary", text: "Start Trading" });
-    const heroContent = createElement("div", { class: "hero-content" }, [heroTitle, heroText, ctaBtn]);
-    const cryptoDisplay = createElement("div", { class: "cryptoPriceDisplayer" });
-    const heroSection = createElement("section", { class: "hero" }, [heroContent, cryptoDisplay]);
-
-    // Footer
-    const footerText = createElement("p", { text: "© 2025 Crypto AI Investor" });
-    const footer = createElement("footer", {}, [footerText]);
-
-    // Modal
-    const modal = createElement("div", { id: "loginModal", class: "modal hidden" });
-    const modalContent = createElement("div", { class: "modal-content" });
-    const modalTitle = createElement("h2", { text: "Login" });
-    const form = createElement("form", { id: "loginForm" });
-    const usernameInput = createElement("input", { type: "text", id: "username", placeholder: "Username", required: true });
-    const passwordInput = createElement("input", { type: "password", id: "password", placeholder: "Password", required: true });
-    const submitBtn = createElement("button", { type: "submit", class: "btn-primary", text: "Login" });
-    const cancelBtn = createElement("button", { type: "button", id: "closeModal", class: "btn-secondary", text: "Cancel" });
-    form.append(usernameInput, passwordInput, submitBtn, cancelBtn);
-    modalContent.append(modalTitle, form);
-    modal.append(modalContent);
-
-    // Append everything
-    app.append(header, heroSection, footer, modal);
-
-    // Init features
-    startLivePrices();
-    setupModal(loginBtn, modal);
-    setupLoginForm(form, modal);
-}
-
-function setupModal(loginBtn, modal) {
-    const closeBtn = modal.querySelector("#closeModal");
-
-    loginBtn.addEventListener("click", () => modal.classList.remove("hidden"));
-    closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) modal.classList.add("hidden");
-    });
-}
-
-function setupLoginForm(form, modal) {
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const username = form.querySelector("#username").value;
-        const password = form.querySelector("#password").value;
-
-        try {
-            const res = await fetch("http://localhost:8080/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password }),
-            });
-
-            if (!res.ok) {
-                alert("❌ Invalid login");
-                return;
-            }
-
-            const data = await res.json();
-            localStorage.setItem("token", data.token);
-            alert("✅ Logged in!");
-            modal.classList.add("hidden");
-        } catch (err) {
-            console.error(err);
-            alert("⚠️ Server error");
-        }
-    });
-}
-
-function startLivePrices() {
-    const container = document.querySelector(".cryptoPriceDisplayer");
-    const symbols = ["btcusdt", "ethusdt", "xrpusdt", "bnbusdt", "solusdt", "trxusdt", "dogeusdt", "adausdt", "avaxusdt", "linkusdt"];
-
-    const wsUrl = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@ticker`).join("/")}`;
-    const ws = new WebSocket(wsUrl);
-
-    symbols.forEach(symbol => {
-        const card = createElement("div", { class: "cryptoCard", id: symbol });
-        const title = createElement("h3", { text: symbol.toUpperCase() });
-        const price = createElement("p", { class: "price", text: "Loading..." });
-        card.append(title, price);
-        container.append(card);
+        card.innerHTML = `
+      <img src="${crypto.img || 'https://via.placeholder.com/64'}" alt="${crypto.name}" />
+      <span class="coin-symbol">${crypto.name}</span>
+      <span class="coin-price">$0.00</span>
+    `;
+        wheel.appendChild(card);
     });
 
+    // --- WebSocket connection ---
+    const streams = cryptoList
+        .map((c) => `${c.ticker.toLowerCase()}@ticker`)
+        .join("/");
+
+    const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+
+    // --- Live updates ---
     ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        const data = msg?.data;
-        if (!data) return;
+        const data = JSON.parse(event.data);
+        const info = data.data;
 
-        const symbol = data.s.toLowerCase();
-        const el = document.querySelector(`#${symbol} .price`);
-        if (el) {
-            const price = parseFloat(data.c).toFixed(5);
-            el.textContent = `$${price}`;
-            el.style.color = data.P >= 0 ? "#4ade80" : "#ef4444";
+        if (!info || !info.s) return;
+
+        const symbol = info.s.toLowerCase(); // ✅ Binance always sends uppercase symbols
+        const price = parseFloat(info.c).toPrecision(6);
+
+        const card = wheel.querySelector(`[data-symbol="${symbol}"]`);
+        if (card) {
+            const priceEl = card.querySelector(".coin-price");
+            priceEl.textContent = `$${price}`;
         }
     };
 
+    // Optional reconnect
     ws.onclose = () => {
-        console.warn("WebSocket closed. Reconnecting...");
-        setTimeout(startLivePrices, 3000);
+        console.warn("WebSocket closed, reconnecting...");
+        setTimeout(create3DCryptoWheel, 5000);
     };
+
+    return wheelContainer;
 }
+

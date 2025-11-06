@@ -5,9 +5,21 @@ export function isTokenExpired() {
     const token = localStorage.getItem("token");
     if (!token) return true;
 
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const exp = payload.exp * 1000; // convert seconds → ms
-    return Date.now() > exp;
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const exp = payload.exp * 1000; // convert seconds → ms
+        const expired = Date.now() > exp;
+
+        if (expired) {
+            localStorage.removeItem("token");
+        }
+
+        return expired;
+    } catch (err) {
+        console.error("Invalid token:", err);
+        localStorage.removeItem("token");
+        return true; // treat malformed token as expired
+    }
 }
 
 export async function authorizedFetch(url, options = {}) {
