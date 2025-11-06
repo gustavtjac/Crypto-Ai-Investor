@@ -14,6 +14,8 @@ public class Crypto {
     @Column(nullable = false)
     private String ticker;
 
+    @Column(length = 999999,nullable = false)
+    private String img;
 
     @Column(nullable = false)
     private String name;
@@ -33,7 +35,23 @@ public class Crypto {
         this.pastTrades = pastTrades;
     }
 
+    public Crypto(List<PastTrades> pastTrades, List<PriceHistory> priceHistoryList, String name, String ticker,String img) {
+        this.pastTrades = pastTrades;
+        this.priceHistoryList = priceHistoryList;
+        this.name = name;
+        this.ticker = ticker;
+        this.img = img;
+    }
+
     public Crypto() {
+    }
+
+    public String getImg() {
+        return img;
+    }
+
+    public void setImg(String img) {
+        this.img = img;
     }
 
     public List<PriceHistory> getPriceHistoryList() {

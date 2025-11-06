@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CryptoRepository extends JpaRepository<Crypto,Integer> {
+    boolean existsByTicker(String ticker);
 }
