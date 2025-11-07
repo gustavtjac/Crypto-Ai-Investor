@@ -2,6 +2,7 @@ package gustavo.com.cryptoaiinvestor.Service;
 
 import gustavo.com.cryptoaiinvestor.Models.BinanceApiKey;
 
+import gustavo.com.cryptoaiinvestor.Repository.BinanceApiKeyRepository;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -17,9 +18,16 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class BinanceApiKeysService {
 
+    private final BinanceApiKeyRepository binanceApiKeyRepository;
+
+    public BinanceApiKeysService(BinanceApiKeyRepository binanceApiKeyRepository) {
+        this.binanceApiKeyRepository = binanceApiKeyRepository;
+    }
+
 
     public boolean validateBinanceApikeys(BinanceApiKey binanceApiKey){
         try {
+            String testnet = "https://testnet.binance.vision";
             String baseUrl = "https://api.binance.com";
             String endpoint = "/api/v3/account";
             long timestamp = System.currentTimeMillis();
@@ -27,7 +35,7 @@ public class BinanceApiKeysService {
 
             // Sign the request using HMAC SHA256
             String signature = sign(query, binanceApiKey.getPrivateKey());
-            String url = baseUrl + endpoint + "?" + query + "&signature=" + signature;
+            String url = testnet + endpoint + "?" + query + "&signature=" + signature;
 
             HttpHeaders headers = new HttpHeaders();
             headers.add("X-MBX-APIKEY", binanceApiKey.getPublicKey());
@@ -36,9 +44,12 @@ public class BinanceApiKeysService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
             return response.getStatusCode().is2xxSuccessful();
-
         } catch (Exception e) {
-            System.out.println("Binance key validation failed: " + e.getMessage());
+            if (e instanceof org.springframework.web.client.HttpClientErrorException httpError) {
+                System.out.println("❌ Binance API Error: " + httpError.getResponseBodyAsString());
+            } else {
+                e.printStackTrace();
+            }
             return false;
         }
 
@@ -58,4 +69,11 @@ public class BinanceApiKeysService {
         }
         return hexString.toString();
     }
+
+
+
+    public BinanceApiKey save(BinanceApiKey binanceApiKey){
+      return binanceApiKeyRepository.save(binanceApiKey);
+    }
+
 }

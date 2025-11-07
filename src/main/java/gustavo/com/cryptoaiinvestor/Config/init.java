@@ -5,6 +5,7 @@ import gustavo.com.cryptoaiinvestor.Models.User;
 import gustavo.com.cryptoaiinvestor.Repository.CryptoRepository;
 import gustavo.com.cryptoaiinvestor.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,14 +24,14 @@ public class init implements CommandLineRunner {
     @Autowired
     PasswordEncoder encoder;
 
+    @Value("${gustavo.encryption}")
+    private String secret;
+
     @Autowired
     private CryptoRepository cryptoRepository;
 
     @Override
     public void run(String... args) throws Exception {
-
-
-
 
         List<Crypto> cryptos = Arrays.asList(
                 new Crypto(new ArrayList<>(), new ArrayList<>(), "Bitcoin", "btcusdt","https://assets.coingecko.com/coins/images/1/large/bitcoin.png?1696501400"),

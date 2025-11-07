@@ -75,7 +75,7 @@ function showAddApiKeyPrompt() {
 
     const secretKeyInput = document.createElement("input");
     secretKeyInput.type = "password";
-    secretKeyInput.placeholder = "Secret nøgle";
+    secretKeyInput.placeholder = "Hemmelig nøgle";
     secretKeyInput.classList.add("input-field");
     secretKeyInput.id = "secretKey";
 
@@ -119,7 +119,10 @@ function showAddApiKeyPrompt() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ apiKey, secretKey })
+                body: JSON.stringify({
+                    publicKey: apiKey,
+                    privateKey: secretKey
+                })
             });
 
             if (!response.ok) throw new Error("Fejl ved oprettelse af API-nøgle");
