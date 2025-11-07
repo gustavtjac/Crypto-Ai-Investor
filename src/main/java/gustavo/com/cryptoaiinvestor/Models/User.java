@@ -22,7 +22,11 @@ public class User implements UserDetails {
 
     @JsonIgnore
     private String password;
-    private String binanceApiKey;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private BinanceApiKey binanceApiKey;
+
+
     private String role;
 
     @OneToMany(mappedBy = "user")
@@ -78,11 +82,11 @@ public class User implements UserDetails {
         this.role = role;
     }
 
-    public String getBinanceApiKey() {
+    public BinanceApiKey getBinanceApiKey() {
         return binanceApiKey;
     }
 
-    public void setBinanceApiKey(String binanceApiKey) {
+    public void setBinanceApiKey(BinanceApiKey binanceApiKey) {
         this.binanceApiKey = binanceApiKey;
     }
 

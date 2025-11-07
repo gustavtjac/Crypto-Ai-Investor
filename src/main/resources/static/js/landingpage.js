@@ -1,11 +1,20 @@
 import {isTokenExpired} from "./securityMethods.js";
+import {createLoginModule} from "./loginmodule.js";
+import {showPopupMessage} from "./reusableFunctions.js";
+import {createAskForApiKeys} from "./apiKeysForm.js";
 
 const app = document.getElementById("app")
 
 
 
-export async function loadLandingPage() {
+export async function loadLandingPage(popUpMsg) {
+    const oldOverlay = document.querySelector(".login-overlay");
+    if (oldOverlay) oldOverlay.remove();
     app.innerHTML = "";
+
+    if (popUpMsg){
+    showPopupMessage(popUpMsg)
+    }
 
     // --- HEADER ---
     const header = document.createElement("div");
@@ -23,12 +32,20 @@ export async function loadLandingPage() {
     headerButtonHolder.classList.add("header-buttons");
 
     if (isTokenExpired()) {
+        await createLoginModule();
         const loginSignUpBtn = document.createElement("button");
         loginSignUpBtn.textContent = "Login / Signup";
         loginSignUpBtn.classList.add("header-btn", "login-btn");
+        loginSignUpBtn.addEventListener("click", async () => {
+            await createLoginModule();
+            window.openLoginPopup();
+        });
         headerButtonHolder.appendChild(loginSignUpBtn);
     } else {
         const goToDashBoardButton = document.createElement("button");
+        goToDashBoardButton.addEventListener("click",async function(){
+            return await createAskForApiKeys();
+        })
         goToDashBoardButton.textContent = "Dashboard";
         goToDashBoardButton.classList.add("header-btn", "dashboard-btn");
         headerButtonHolder.appendChild(goToDashBoardButton);
@@ -44,23 +61,31 @@ export async function loadLandingPage() {
     heroSection.classList.add("hero-section");
 
 
-        // Big text
+        // TITEL
     const heroTitle = document.createElement("h1");
     heroTitle.textContent = "Gustavo Investor Bot";
     heroTitle.classList.add("hero-title");
 // crypto wheel
     heroSection.appendChild(heroTitle);
 
-        // Call-to-action button
+        // Call-to-action
     const ctaButton = document.createElement("button");
     ctaButton.classList.add("cta-button");
 
     if (isTokenExpired()) {
         ctaButton.textContent = "Start Today";
+        ctaButton.addEventListener("click", async () => {
+            await createLoginModule();
+            window.openLoginPopup();
+        });
         ctaButton.classList.add("start-btn");
     } else {
+
         ctaButton.textContent = "Go to Dashboard";
         ctaButton.classList.add("dashboard-btn");
+        ctaButton.addEventListener("click", async function(){
+            return await createAskForApiKeys();
+        })
     }
 
     //div til hjul og description
