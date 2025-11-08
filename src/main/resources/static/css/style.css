@@ -428,3 +428,24 @@ padding-right: 10vh;
     opacity: 0;
 }
 
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.trade-table th, .trade-table td {
+    border: 1px solid #333;
+    padding: 8px;
+    text-align: center;
+}
+
+.trade-table th {
+    background-color: #111;
+    color: #fff;
+}
+
+.trade-table td {
+    color: #ddd;
+}
+

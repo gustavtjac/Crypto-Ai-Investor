@@ -32,8 +32,8 @@ public class BinanceApiKeysService {
 
 
     public boolean validateBinanceApikeys(BinanceApiKey binanceApiKey) {
-        final String baseUrl = "https://api.binance.com";
-        final String endpoint = "/api/v3/account";
+        final String baseUrl = "https://testnet.binancefuture.com";
+        final String endpoint = "/fapi/v3/account";
 
         try {
             long timestamp = System.currentTimeMillis();
@@ -66,7 +66,7 @@ public class BinanceApiKeysService {
         }
     }
 
-    private String sign(String data, String secret) throws Exception {
+    public String sign(String data, String secret) throws Exception {
         Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
         SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         sha256_HMAC.init(secret_key);

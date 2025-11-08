@@ -13,7 +13,7 @@ public class BinanceWebSocketClient extends WebSocketClient {
 
 
     public BinanceWebSocketClient(String listenKey, Consumer<String> messageHandler) {
-        super(URI.create("wss://stream.binance.com:9443/ws/" + listenKey));
+        super(URI.create("wss://stream.binancefuture.com/ws/" + listenKey));
         this.messageHandler = messageHandler;
     }
 

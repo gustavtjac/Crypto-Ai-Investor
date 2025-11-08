@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.net.Authenticator;
-
 @RestController
 @RequestMapping("/api/binance")
 public class BinanceApiController {
@@ -50,6 +48,16 @@ public class BinanceApiController {
     public SseEmitter stream() {
         return liveService.subscribe();
     }
+
+
+    @GetMapping("/positions")
+    public ResponseEntity<String> getPositions(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+
+        return ResponseEntity.status(HttpStatus.OK).body(liveService.getAllPositionRisks(user.getBinanceApiKey()));
+
+    }
+
 
 
 }

@@ -3,6 +3,7 @@ package gustavo.com.cryptoaiinvestor.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gustavo.com.cryptoaiinvestor.Models.BinanceApiKey;
+import gustavo.com.cryptoaiinvestor.Models.User;
 import gustavo.com.cryptoaiinvestor.Websocket.BinanceWebSocketClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Mono;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -24,9 +26,11 @@ public class BinanceLiveService {
     private BinanceWebSocketClient socketClient;
     private BinanceApiKey currentKeys;
     private String listenKey;
+    private final BinanceApiKeysService binanceApiKeysService;
 
-    public BinanceLiveService(WebClient.Builder webClient) {
+    public BinanceLiveService(WebClient.Builder webClient, BinanceApiKeysService binanceApiKeysService) {
         this.webClient = webClient;
+        this.binanceApiKeysService = binanceApiKeysService;
     }
 
     // 🔌 Connect to Binance (called from controller)
@@ -77,11 +81,11 @@ public class BinanceLiveService {
     // 🗝️ Create Binance Listen Key via REST API
     private String createListenKey(BinanceApiKey keys) throws Exception {
         String response = webClient
-                .baseUrl("https://api.binance.com")
+                .baseUrl("https://testnet.binancefuture.com")
                 .defaultHeader("X-MBX-APIKEY", keys.getPublicKey())
                 .build()
                 .post()
-                .uri("/api/v3/userDataStream")
+                .uri("/fapi/v1/listenKey")
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
@@ -97,11 +101,11 @@ public class BinanceLiveService {
 
         try {
             webClient
-                    .baseUrl("https://testnet.binance.vision")
+                    .baseUrl("https://testnet.binancefuture.com")
                     .defaultHeader("X-MBX-APIKEY", currentKeys.getPublicKey())
                     .build()
                     .put()
-                    .uri("/api/v3/userDataStream?listenKey=" + listenKey)
+                    .uri("/fapi/v1/listenKey?listenKey=" + listenKey)
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block();
@@ -127,4 +131,35 @@ public class BinanceLiveService {
             currentKeys = null;
         }
     }
+    public String getAllPositionRisks(BinanceApiKey binanceApiKey) {
+
+        BinanceApiKey decrypted = binanceApiKeysService.getDeCryptedKeys(binanceApiKey);
+        long timestamp = System.currentTimeMillis();
+
+        String query = "timestamp=" + timestamp;
+        try {
+            String signature = binanceApiKeysService.sign(query, decrypted.getPrivateKey());
+            String fullQuery = query + "&signature=" + signature;
+
+            return webClient
+                    .baseUrl("https://testnet.binancefuture.com")
+                    .defaultHeader("X-MBX-APIKEY", decrypted.getPublicKey()) // ✅ use user's actual key
+                    .build()
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/fapi/v2/positionRisk")
+                            .query(fullQuery)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(String.class).block();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Noget gik galt under api get request");
+        }
+    }
+
+
+
+
+
 }
