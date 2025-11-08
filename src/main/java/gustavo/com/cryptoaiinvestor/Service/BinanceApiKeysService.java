@@ -9,6 +9,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,41 +20,50 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class BinanceApiKeysService {
 
+    private final EncryptionService encryptionService;
     private final BinanceApiKeyRepository binanceApiKeyRepository;
+    private final WebClient.Builder webClient;
 
-    public BinanceApiKeysService(BinanceApiKeyRepository binanceApiKeyRepository) {
+    public BinanceApiKeysService(EncryptionService encryptionService, BinanceApiKeyRepository binanceApiKeyRepository, WebClient.Builder webClient) {
+        this.encryptionService = encryptionService;
         this.binanceApiKeyRepository = binanceApiKeyRepository;
+        this.webClient = webClient;
     }
 
 
-    public boolean validateBinanceApikeys(BinanceApiKey binanceApiKey){
+    public boolean validateBinanceApikeys(BinanceApiKey binanceApiKey) {
+        final String baseUrl = "https://api.binance.com";
+        final String endpoint = "/api/v3/account";
+
         try {
-            String testnet = "https://testnet.binance.vision";
-            String baseUrl = "https://api.binance.com";
-            String endpoint = "/api/v3/account";
             long timestamp = System.currentTimeMillis();
             String query = "timestamp=" + timestamp;
-
-            // Sign the request using HMAC SHA256
             String signature = sign(query, binanceApiKey.getPrivateKey());
-            String url = testnet + endpoint + "?" + query + "&signature=" + signature;
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("X-MBX-APIKEY", binanceApiKey.getPublicKey());
+            int status = webClient
+                    .baseUrl(baseUrl)
+                    .defaultHeader("X-MBX-APIKEY", binanceApiKey.getPublicKey())
+                    .build()
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(endpoint)
+                            .queryParam("timestamp", timestamp)
+                            .queryParam("signature", signature)
+                            .build())
+                    .exchangeToMono(res -> Mono.just(res.statusCode().value()))
+                    .onErrorResume(ex -> {
+                        System.out.println("❌ Binance API Error: " + ex.getMessage());
+                        return Mono.just(0);
+                    })
+                    .blockOptional()
+                    .orElse(0);
 
-            RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            return status == 200;
 
-            return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
-            if (e instanceof org.springframework.web.client.HttpClientErrorException httpError) {
-                System.out.println("❌ Binance API Error: " + httpError.getResponseBodyAsString());
-            } else {
-                e.printStackTrace();
-            }
+            e.printStackTrace();
             return false;
         }
-
     }
 
     private String sign(String data, String secret) throws Exception {
@@ -74,6 +85,13 @@ public class BinanceApiKeysService {
 
     public BinanceApiKey save(BinanceApiKey binanceApiKey){
       return binanceApiKeyRepository.save(binanceApiKey);
+    }
+
+    public BinanceApiKey getDeCryptedKeys(BinanceApiKey binanceApiKey){
+        BinanceApiKey decrypted = new BinanceApiKey();
+        decrypted.setPublicKey(encryptionService.decrypt(binanceApiKey.getPublicKey()));
+        decrypted.setPrivateKey(encryptionService.decrypt(binanceApiKey.getPrivateKey()));
+        return decrypted;
     }
 
 }

@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/cryptos/frontenddto").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/binance/websocket/stream").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

@@ -5,9 +5,9 @@ export async function createLoginModule() {
     if (oldOverlay) oldOverlay.remove();
     let loginOrSignUp = true;
 
-    // Overlay container
+    // Container til at holde det hele
     const overlay = document.createElement("div");
-    overlay.classList.add("login-overlay", "hidden"); // hidden by default
+    overlay.classList.add("login-overlay", "hidden");
 
     const loginFormContainer = document.createElement("div");
     loginFormContainer.classList.add("login-container");
@@ -20,7 +20,7 @@ export async function createLoginModule() {
     headerText.textContent = "Login";
     loginForm.appendChild(headerText);
 
-    // Button holder
+    //div til at holde kanpper
     const buttonHolder = document.createElement("div");
     buttonHolder.classList.add("button-holder");
 
@@ -51,7 +51,7 @@ export async function createLoginModule() {
     buttonHolder.appendChild(chooseRegisterButton);
     loginForm.appendChild(buttonHolder);
 
-    // Inputs
+    // Div til at holde inputs
     const inputsHolder = document.createElement("div");
     inputsHolder.classList.add("inputs-holder");
 
@@ -75,7 +75,7 @@ export async function createLoginModule() {
 
     loginForm.appendChild(inputsHolder);
 
-    // Submit button
+    //submit knap
     const submitBtn = document.createElement("button");
     submitBtn.classList.add("submit-btn");
     submitBtn.textContent = "Login";
@@ -110,17 +110,17 @@ export async function createLoginModule() {
     overlay.appendChild(loginFormContainer);
     document.body.appendChild(overlay);
 
-    // Public method to open popup
+    // vis popup
     window.openLoginPopup = function() {
         overlay.classList.remove("hidden");
     };
 
-    // Public method to close popup
+    // fjern popup
     window.closeLoginPopup = function() {
         overlay.classList.add("hidden");
     };
 
-    // Close when clicking outside form
+    // luk når man klikker udenfor popuip
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
             closeLoginPopup();

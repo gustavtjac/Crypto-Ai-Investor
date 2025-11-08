@@ -45,25 +45,24 @@ async function checkIfUserHasApiKey() {
 }
 
 function showAddApiKeyPrompt() {
-    // Clear app content
     app.innerHTML = "";
 
-    // === MAIN CONTAINER (use same translucent style) ===
+    //  form til at inmputte api keys
     const container = document.createElement("div");
-    container.classList.add("login-container"); // reuse your glass-style box
-    container.style.margin = "6rem auto";       // center it on page
+    container.classList.add("login-container");
+    container.style.margin = "6rem auto";
     container.style.maxWidth = "500px";
 
-    // === HEADER ===
+    // header til form
     const header = document.createElement("h2");
     header.classList.add("login-header");
     header.textContent = "Tilføj Binance API-nøgle";
 
-    // === INFO TEXT ===
+    // infotext
     const info = document.createElement("p");
     info.textContent = "Indtast din offentlige og hemmelige nøgle for at benytte appen";
 
-    // === INPUTS HOLDER ===
+    // holder til inputs
     const inputsHolder = document.createElement("div");
     inputsHolder.classList.add("inputs-holder");
 
@@ -82,7 +81,7 @@ function showAddApiKeyPrompt() {
     inputsHolder.appendChild(apiKeyInput);
     inputsHolder.appendChild(secretKeyInput);
 
-    // === BUTTONS ===
+    // gem knap
     const saveBtn = document.createElement("button");
     saveBtn.classList.add("submit-btn");
     saveBtn.textContent = "Gem nøgle";
@@ -101,24 +100,19 @@ function showAddApiKeyPrompt() {
 
     app.appendChild(container);
 
-    // === EVENT HANDLERS ===
+    // gem api key event
     saveBtn.addEventListener("click", async () => {
         const apiKey = apiKeyInput.value.trim();
         const secretKey = secretKeyInput.value.trim();
 
         if (!apiKey || !secretKey) {
-            showPopupMessage("Begge felter skal udfyldes", "error");
+            showPopupMessage("Begge felter skal udfyldes");
             return;
         }
 
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:8080/api/users/binance-key", {
+            const response = await authorizedFetch("http://localhost:8080/api/users/binance-key", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     publicKey: apiKey,
                     privateKey: secretKey

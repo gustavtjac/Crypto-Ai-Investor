@@ -14,7 +14,6 @@ public class EncryptionService {
     private String SECRET;
 
     public EncryptionService() {
-
     }
 
     public String encrypt(String value) {
