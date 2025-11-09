@@ -22,6 +22,12 @@ public class TradingStrategy {
     @OneToMany(mappedBy = "tradingStrategy")
     private List<PastTrades> pastTrades;
 
+    public TradingStrategy(String name, String rules, String description, List<PastTrades> pastTrades) {
+        this.name = name;
+        this.rules = rules;
+        this.description = description;
+        this.pastTrades = pastTrades;
+    }
 
     public List<PastTrades> getPastTrades() {
         return pastTrades;

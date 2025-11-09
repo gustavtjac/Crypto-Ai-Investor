@@ -448,4 +448,47 @@ padding-right: 10vh;
 .trade-table td {
     color: #ddd;
 }
+.dashboard-header{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
 
+}
+.dashboard-header img{
+    margin: 25px;
+    height: 50px;
+    width: 50px;
+}
+.balance-container{
+    margin: 25px;
+}
+.balance-container p{
+    text-align: center;
+    padding: 5px;
+    background-color: white;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 50px;
+    font-weight: 900;
+}
+.gpt-div{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.gpt-trade-btn{
+    font-size: 2vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #3b82f6;
+text-align: center;
+    height: 15vh;
+    width: 15vh;
+    border-radius: 50vh;
+
+
+}

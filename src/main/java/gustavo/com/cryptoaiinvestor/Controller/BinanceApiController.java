@@ -1,6 +1,7 @@
 package gustavo.com.cryptoaiinvestor.Controller;
 
 
+import gustavo.com.cryptoaiinvestor.DTO.BinanceFrontEndInfo;
 import gustavo.com.cryptoaiinvestor.Models.BinanceApiKey;
 import gustavo.com.cryptoaiinvestor.Models.User;
 import gustavo.com.cryptoaiinvestor.Service.BinanceApiKeysService;
@@ -20,41 +21,23 @@ public class BinanceApiController {
 
 
     private final BinanceLiveService liveService;
-    private final BinanceApiKeysService binanceApiKeysService;
 
     public BinanceApiController(BinanceLiveService liveService, BinanceApiKeysService binanceApiKeysService) {
         this.liveService = liveService;
-        this.binanceApiKeysService = binanceApiKeysService;
     }
 
-
-    @PostMapping("/websocket/connect")
-    public ResponseEntity<?> connect(Authentication authentication) {
-        try {
-            User user = (User) authentication.getPrincipal();
-            BinanceApiKey keys = binanceApiKeysService.getDeCryptedKeys(user.getBinanceApiKey());
-
-            liveService.connect(keys);
-            return ResponseEntity.ok("✅ Connected to Binance User Stream.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ Failed to connect to Binance: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/websocket/stream")
-    public SseEmitter stream() {
-        return liveService.subscribe();
-    }
+   @PostMapping("/newtrade")
+   public ResponseEntity<?> createANewTradeUsingGpt(Authentication authentication){
+       User user = (User) authentication.getPrincipal();
+       return ResponseEntity.status(HttpStatus.OK).body(liveService.createNewTradeUsingGpt(user));
+   }
 
 
-    @GetMapping("/positions")
-    public ResponseEntity<String> getPositions(Authentication authentication) {
+
+    @GetMapping("/info")
+    public ResponseEntity<BinanceFrontEndInfo> getAllInfo(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-
-        return ResponseEntity.status(HttpStatus.OK).body(liveService.getAllPositionRisks(user.getBinanceApiKey()));
+        return ResponseEntity.status(HttpStatus.OK).body(liveService.getAccountOverview(user.getBinanceApiKey()));
 
     }
 

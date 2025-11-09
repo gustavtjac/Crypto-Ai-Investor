@@ -35,21 +35,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = null;
         String username = null;
 
-        // 🔍 Extract JWT token from Authorization header
+
+        //tjekker først om den har en header og om den er formetteret rigtigt
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             try {
+                //prøver at finde username
                 username = jwtUtil.extractUsername(token);
             } catch (Exception e) {
-                System.out.println("❌ Invalid JWT: " + e.getMessage());
+                System.out.println("Kunne ikke finde username" + e.getMessage());
             }
         }
 
-        // ✅ If token is valid and no authentication yet, set SecurityContext
+        //Hvis brugeren findes og den ikke er auth i forhold til denne request endnu
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            // Validate token before authenticating
+            //Tjekker om token er valid
             if (jwtUtil.validateToken(token, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
@@ -61,7 +63,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
 
-        // Continue the filter chain
+        //næste filter, hvis det findes
         filterChain.doFilter(request, response);
     }
 }
