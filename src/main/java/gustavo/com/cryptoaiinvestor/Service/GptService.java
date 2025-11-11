@@ -88,12 +88,10 @@
         Recent crypto price history (latest 10 entries per crypto, with IDs):
         %s
 
-        Based on this data, generate One trade setup. Your trades are meant for short term gain 5-20 minute trades. The more confident you are the more leverage you should use. Dont be afraid to also do some  riskier trading
-  
+        Based on this data, generate One trade setup. Your trades are meant for short term gain 5-20 minute trades. The more confident you are the more leverage you should use. Dont be afraid to also do some  riskier trading.
+        Be honest and take some risks!!!
         Use your vast knowledge on the crypto market to make the most profitable trade.
-        
-        if prices are empty in list fint current prices on the internet
-        
+       
         dont be scared to use lesser known / secure coins if you see potential in them.
 
         Return ONLY valid JSON with two top-level objects:
