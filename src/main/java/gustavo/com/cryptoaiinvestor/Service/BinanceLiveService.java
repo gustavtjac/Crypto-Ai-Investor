@@ -90,7 +90,7 @@ public class BinanceLiveService {
             if (jsonNode.isArray()) {
                 for (JsonNode node : jsonNode) {
                     if ("USDT".equalsIgnoreCase(node.path("asset").asText())) {
-                        double balance = node.path("balance").asDouble(0.0);
+                        double balance = node.path("crossWalletBalance").asDouble(0.0);
                         double unrealizedPnL = node.path("crossUnPnl").asDouble(0.0);
                         result.put("balance", balance);
                         result.put("unrealizedProfit", unrealizedPnL);
