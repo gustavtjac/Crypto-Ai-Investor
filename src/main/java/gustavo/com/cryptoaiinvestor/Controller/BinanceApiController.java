@@ -29,7 +29,12 @@ public class BinanceApiController {
    @PostMapping("/newtrade")
    public ResponseEntity<?> createANewTradeUsingGpt(Authentication authentication){
        User user = (User) authentication.getPrincipal();
-       return ResponseEntity.status(HttpStatus.OK).body(liveService.createNewTradeUsingGpt(user));
+       try{
+           return ResponseEntity.status(HttpStatus.OK).body(liveService.createNewTradeUsingGpt(user));
+       } catch (Exception e) {
+           return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+       }
+
    }
 
 

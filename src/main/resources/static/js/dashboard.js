@@ -1,10 +1,9 @@
 import { authorizedFetch, isTokenExpired } from "./securityMethods.js";
 import { loadLandingPage } from "./landingpage.js";
-import {showPopupMessage} from "./reusableFunctions.js";
-
-const app = document.getElementById("app");
+import { showNewTrade, showPopupMessage } from "./reusableFunctions.js";
 
 export async function loadDashBoard() {
+    const app = document.getElementById("app");
     app.innerHTML = "";
 
     if (isTokenExpired()) {
@@ -14,7 +13,22 @@ export async function loadDashBoard() {
     const markWs = {};
     const positions = {};
 
-    // --- Dashboard container ---
+    // === Loading overlay ===
+    const loadingOverlay = document.createElement("div");
+    loadingOverlay.classList.add("loading-overlay");
+
+    const loadingText = document.createElement("div");
+    loadingText.classList.add("loading-text");
+    loadingText.textContent = "💸 Indlæser din indtjening 💸";
+
+    const loadingBar = document.createElement("div");
+    loadingBar.classList.add("loading-bar");
+
+    loadingOverlay.appendChild(loadingText);
+    loadingOverlay.appendChild(loadingBar);
+    app.appendChild(loadingOverlay);
+
+    // === Dashboard container ===
     const dashboardContainer = document.createElement("div");
     dashboardContainer.classList.add("dashboard-container");
 
@@ -37,7 +51,6 @@ export async function loadDashBoard() {
 
     const balanceLabel = document.createElement("p");
     balanceLabel.textContent = "Balance: ";
-
     const balanceValue = document.createElement("span");
     balanceValue.id = "balance-value";
     balanceValue.textContent = "–";
@@ -46,7 +59,6 @@ export async function loadDashBoard() {
 
     const pnlLabel = document.createElement("p");
     pnlLabel.textContent = "Total PnL: ";
-
     const pnlValue = document.createElement("span");
     pnlValue.id = "total-pnl-value";
     pnlValue.textContent = "–";
@@ -55,16 +67,21 @@ export async function loadDashBoard() {
 
     balanceContainer.appendChild(balanceLabel);
     balanceContainer.appendChild(pnlLabel);
-    headerDiv.appendChild(balanceContainer)
+    headerDiv.appendChild(balanceContainer);
 
+    // === Table & Chart Section ===
+    const tableGraphContainer = document.createElement("div");
+    tableGraphContainer.classList.add("table-graph-container");
 
     // --- Trades Table ---
+    const tableWrapper = document.createElement("div");
+    tableWrapper.classList.add("table-wrapper");
+
     const table = document.createElement("table");
     table.classList.add("trade-table");
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
-
     const headers = [
         "Symbol",
         "Side",
@@ -74,10 +91,10 @@ export async function loadDashBoard() {
         "Mark Price",
         "Unrealized PnL (USDT)",
         "Stop Loss",
-        "Take Profit"
+        "Take Profit",
     ];
 
-    headers.forEach(text => {
+    headers.forEach((text) => {
         const th = document.createElement("th");
         th.textContent = text;
         headerRow.appendChild(th);
@@ -88,61 +105,132 @@ export async function loadDashBoard() {
 
     const tbody = document.createElement("tbody");
     table.appendChild(tbody);
-    dashboardContainer.appendChild(table);
+    tableWrapper.appendChild(table);
+    tableGraphContainer.appendChild(tableWrapper);
+
+    // --- Graph Container ---
+    const chartContainer = document.createElement("div");
+    chartContainer.classList.add("chart-container");
+    const canvas = document.createElement("canvas");
+    canvas.id = "balanceChart";
+    chartContainer.appendChild(canvas);
+    tableGraphContainer.appendChild(chartContainer);
+
+    dashboardContainer.appendChild(tableGraphContainer);
     app.appendChild(dashboardContainer);
 
-    // --- Initial load ---
-    await loadAccountInfo();
-    setInterval(loadAccountInfo, 3000);
+    // === GPT Button ===
+    const gptDiv = document.createElement("div");
+    gptDiv.classList.add("gpt-div");
 
-    const gptDiv = document.createElement("div")
-    gptDiv.classList.add("gpt-div")
-
-
-    const gptMakeTrade = document.createElement("btn")
-    gptMakeTrade.classList.add("gpt-trade-btn")
-    gptMakeTrade.textContent = "Tjen mig nogle penge hr. GPT 🤑🤖"
-    gptMakeTrade.addEventListener("click", async function(){
-        const svar = confirm("Er du sikker på du vil lade hr. GPT investere for dig :)")
-        if (!svar){
-           return showPopupMessage("Ingen investering blev fortaget")
+    const gptMakeTrade = document.createElement("button");
+    gptMakeTrade.classList.add("gpt-trade-btn");
+    gptMakeTrade.textContent = "Tjen mig nogle penge hr. GPT 🤑🤖";
+    gptMakeTrade.addEventListener("click", async function () {
+        const svar = confirm("Er du sikker på du vil lade hr. GPT investere for dig :)");
+        if (!svar) {
+            return showPopupMessage("Ingen investering blev fortaget");
         }
 
         const response = await authorizedFetch("http://localhost:8080/api/binance/newtrade", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            }
+            headers: { "Content-Type": "application/json" },
         });
 
-        if (!response.ok){
-            return showPopupMessage(response)
+        if (!response.ok) {
+            const sound = new Audio("/static/soundeffects/erro.mp3");
+            if (sound) sound.play().catch(() => {});
+            return showPopupMessage("😭" + (await response.text()));
         }
-        const data = await response.json()
 
-        return showPopupMessage("Gpt har lavet følgende handel for dig" + data)
+        const data = await response.json();
+        const trade = data.binanceTrade;
 
-    })
+        const message = `
+GustavoGPT har lige åbnet en ${trade.side === "BUY" ? "💚 LONG" : "❤️ SHORT"} på ${trade.symbol}.
+Indgangspris: $${trade.entryPrice.toLocaleString()}
+Mængde: ${trade.quantity} BTC med ${trade.leverage}x gearing.
+Take Profit: $${trade.takeProfit.toLocaleString()}
+Stop Loss: $${trade.stopLoss.toLocaleString()}
 
-gptDiv.appendChild(gptMakeTrade)
-    dashboardContainer.appendChild(gptDiv)
+Selvtillid: ${(trade.confidence * 100).toFixed(0)}% 😎  
+Det her kan enten blive champagne 💸 eller tårer 🫠
+`;
 
+        return showNewTrade("GPT gjorde det igen 💰💵", message);
+    });
 
+    gptDiv.appendChild(gptMakeTrade);
+    dashboardContainer.appendChild(gptDiv);
 
+    // === Chart setup ===
+    let balanceHistory = [];
+    let chart = null;
+
+    function initBalanceChart() {
+        const ctx = document.getElementById("balanceChart").getContext("2d");
+        chart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Balance over tid (USDT)",
+                        data: [],
+                        borderColor: "#3b82f6",
+                        backgroundColor: "rgba(59,130,246,0.2)",
+                        fill: true,
+                        tension: 0.3,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: "#fff" } },
+                    y: { ticks: { color: "#fff" } },
+                },
+                plugins: {
+                    legend: { labels: { color: "#fff" } },
+                },
+            },
+        });
+    }
+
+    function updateBalanceChart(newBalance) {
+        const now = new Date().toLocaleTimeString();
+        balanceHistory.push({ time: now, value: newBalance });
+        if (balanceHistory.length > 20) balanceHistory.shift();
+
+        chart.data.labels = balanceHistory.map((b) => b.time);
+        chart.data.datasets[0].data = balanceHistory.map((b) => b.value);
+        chart.update();
+    }
+
+    initBalanceChart();
+
+    // === Load account info ===
+
+    await loadAccountInfo();
+    loadingOverlay.remove(); // remove loader after first load
+    setInterval(loadAccountInfo, 3000);
+
+    // === Update chart every minute ===
+    setInterval(() => {
+        updateBalanceChart(parseFloat(document.getElementById("balance-value").textContent));
+    }, 30000);
 
     async function loadAccountInfo() {
         try {
             const response = await authorizedFetch("http://localhost:8080/api/binance/info");
             if (!response.ok) throw new Error(await response.text());
-
             const data = await response.json();
             const activeTrades = data.activeTrades || [];
 
-            // Update balance from REST
             balanceValue.textContent = data.balance.toFixed(2);
 
-            // Update local positions
-            activeTrades.forEach(p => {
+            activeTrades.forEach((p) => {
+                console.log(parseFloat(p.positionAmt))
                 const symbol = p.symbol;
                 const amount = parseFloat(p.positionAmt);
 
@@ -151,27 +239,36 @@ gptDiv.appendChild(gptMakeTrade)
                         symbol,
                         positionAmt: amount,
                         entryPrice: parseFloat(p.entryPrice),
-                        side: amount > 0 ? "BUY" : "SELL",
+                        side: amount > 0 ? "LONG" : "SHORT",
                         leverage: parseInt(p.leverage),
                         unrealizedPnL: parseFloat(p.unrealizedProfit),
                         markPrice: null,
                         stopLoss: p.stopLoss ?? null,
-                        takeProfit: p.takeProfit ?? null
+                        takeProfit: p.takeProfit ?? null,
                     };
                     createRow(positions[symbol]);
                     listenToMarkPrice(symbol);
                 } else {
-                    // Update only REST-based values
+                    positions[symbol].positionAmt = parseFloat(p.positionAmt); // ✅ refresh position size
                     positions[symbol].unrealizedPnL = parseFloat(p.unrealizedProfit);
                     positions[symbol].stopLoss = p.stopLoss ?? null;
                     positions[symbol].takeProfit = p.takeProfit ?? null;
+
+                    const markPrice = positions[symbol].markPrice;
+                    if (markPrice) {
+                        const posCell = document.getElementById(`position-${symbol}`);
+                        if (posCell) {
+                            const notional = Math.abs(positions[symbol].positionAmt * markPrice);
+                            posCell.textContent = notional.toFixed(2);
+                        }
+                    }
+
                     updatePnLCell(symbol);
                 }
             });
 
-            // Remove closed positions
-            Object.keys(positions).forEach(symbol => {
-                if (!activeTrades.find(p => p.symbol === symbol)) {
+            Object.keys(positions).forEach((symbol) => {
+                if (!activeTrades.find((p) => p.symbol === symbol)) {
                     const row = document.getElementById(`row-${symbol}`);
                     if (row) row.remove();
                     delete positions[symbol];
@@ -182,7 +279,6 @@ gptDiv.appendChild(gptMakeTrade)
                 }
             });
 
-            // Update total account PnL (sum of all trade PnLs from REST)
             updateAccountPnL();
         } catch (err) {
             console.error("❌ Failed to load Binance account info:", err);
@@ -203,7 +299,7 @@ gptDiv.appendChild(gptMakeTrade)
         const symbolTd = makeCell(null, pos.symbol);
         const sideTd = makeCell(null, pos.side);
         const posTd = makeCell(`position-${pos.symbol}`, "–");
-        const levTd = makeCell(null, pos.leverage+"x" ?? "-");
+        const levTd = makeCell(null, pos.leverage + "x" ?? "-");
         const entryTd = makeCell(null, pos.entryPrice.toFixed(2));
         const markTd = makeCell(`mark-${pos.symbol}`, "–");
         const pnlTd = makeCell(`pnl-${pos.symbol}`, pos.unrealizedPnL.toFixed(4));
@@ -211,7 +307,7 @@ gptDiv.appendChild(gptMakeTrade)
         const slTd = makeCell(null, pos.stopLoss ? pos.stopLoss.toFixed(2) : "-");
         const tpTd = makeCell(null, pos.takeProfit ? pos.takeProfit.toFixed(2) : "-");
 
-        [symbolTd, sideTd, posTd, levTd, entryTd, markTd, pnlTd, slTd, tpTd].forEach(td =>
+        [symbolTd, sideTd, posTd, levTd, entryTd, markTd, pnlTd, slTd, tpTd].forEach((td) =>
             row.appendChild(td)
         );
 
@@ -227,10 +323,7 @@ gptDiv.appendChild(gptMakeTrade)
     }
 
     function updateAccountPnL() {
-        const total = Object.values(positions).reduce(
-            (sum, p) => sum + (p.unrealizedPnL || 0),
-            0
-        );
+        const total = Object.values(positions).reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0);
         pnlValue.textContent = total.toFixed(4);
         pnlValue.style.color = total >= 0 ? "limegreen" : "red";
     }
@@ -241,20 +334,17 @@ gptDiv.appendChild(gptMakeTrade)
         const lower = symbol.toLowerCase();
         const ws = new WebSocket(`wss://stream.binancefuture.com/ws/${lower}@markPrice@1s`);
 
-        ws.onmessage = e => {
+        ws.onmessage = (e) => {
             const d = JSON.parse(e.data);
             const markPrice = parseFloat(d.p);
             const pos = positions[symbol];
             if (!pos) return;
 
             pos.markPrice = markPrice;
-
             const markCell = document.getElementById(`mark-${symbol}`);
             const posCell = document.getElementById(`position-${symbol}`);
 
             if (markCell) markCell.textContent = markPrice.toFixed(2);
-
-            // Live update position value in USDT (no PnL math)
             if (posCell) {
                 const notional = Math.abs(pos.positionAmt * markPrice);
                 posCell.textContent = notional.toFixed(2);
@@ -262,7 +352,7 @@ gptDiv.appendChild(gptMakeTrade)
         };
 
         ws.onclose = () => console.warn(`⚠️ WS closed for ${symbol}`);
-        ws.onerror = err => console.error(`❌ WS error for ${symbol}:`, err);
+        ws.onerror = (err) => console.error(`❌ WS error for ${symbol}:`, err);
 
         markWs[symbol] = ws;
     }

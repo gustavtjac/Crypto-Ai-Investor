@@ -492,3 +492,161 @@ text-align: center;
 
 
 }
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.4s ease-in;
+}
+
+.loading-text {
+    font-size: 2rem;
+    color: #ffffff;
+    font-weight: 700;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.loading-bar {
+    width: 60%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.loading-bar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #84cc16, #22c55e);
+    animation: slideBar 1.4s infinite;
+    border-radius: 10px;
+}
+
+@keyframes slideBar {
+    0% { left: -40%; }
+    50% { left: 100%; }
+    100% { left: -40%; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* === Modernized Trade Table === */
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.trade-table th {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    padding: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: none;
+}
+
+.trade-table td {
+    color: #f3f4f6;
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trade-table tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.trade-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transition: background 0.3s ease;
+}
+
+/* === Sleek GPT Button === */
+.gpt-div {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.gpt-trade-btn {
+    height: 40vh;
+    width: 40vh;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    border: none;
+    padding: 18px 36px;
+    border-radius: 50px;
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 8px 100px rgba(22, 163, 74, 0.7);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gpt-trade-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(22, 163, 74, 0.6);
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+/* === Table & Graph Container === */
+.table-graph-container {
+    display: flex;
+    flex-direction:row;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30px;
+    gap: 40px;
+    width: 100%;
+}
+
+/* --- Table Wrapper --- */
+.table-wrapper {
+    width: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Chart Container --- */
+.chart-container {
+    max-width: 800px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+#balanceChart {
+    height: 25vh;
+    width: 40vh;
+}

@@ -88,11 +88,13 @@
         Recent crypto price history (latest 10 entries per crypto, with IDs):
         %s
 
-        Based on this data, generate ONE high-confidence trade setup.
+        Based on this data, generate One trade setup. Your trades are meant for short term gain 5-20 minute trades. The more confident you are the more leverage you should use
   
         Use your vast knowledge on the crypto market to make the most profitable trade.
         
         if prices are empty in list fint current prices on the internet
+        
+        dont be scared to use lesser known / secure coins if you see potential in them.
 
         Return ONLY valid JSON with two top-level objects:
         {
@@ -141,45 +143,40 @@
                         })
                         .block();
 
-                // 👀 DEBUG: Print the full raw GPT response JSON
                 System.out.println("🧠 Raw GPT response:\n" + response);
 
-                // --- Parse GPT response safely ---
+
                 JsonNode root = mapper.readTree(response);
+
+
                 String content = root.path("choices").get(0).path("message").path("content").asText();
 
-                // 👀 Debug: show GPT’s returned message before cleanup
                 System.out.println("💬 GPT message content (raw):\n" + content);
 
-                // 🧹 Clean markdown wrappers like ```json ... ```
                 content = content.trim();
                 if (content.startsWith("```")) {
                     content = content.replaceAll("(?s)```(json)?", "").trim();
                 }
 
-                // Extract only the JSON part
                 int firstBrace = content.indexOf('{');
                 int lastBrace = content.lastIndexOf('}');
                 if (firstBrace != -1 && lastBrace != -1) {
                     content = content.substring(firstBrace, lastBrace + 1);
                 }
 
-                // 👀 Debug: show cleaned JSON before parsing
                 System.out.println("🧩 Cleaned GPT JSON:\n" + content);
 
                 JsonNode result = mapper.readTree(content);
 
-                // ✅ Validate JSON structure
                 if (!result.has("binanceTrade") || !result.has("pastTrade")) {
-                    throw new RuntimeException("Invalid GPT JSON format: missing required keys.");
+                    throw new RuntimeException("Ikke gyldigt format på gtp svar");
                 }
 
-                // ✅ Final parsed JSON
-                System.out.println("✅ Parsed GPT trade result:\n" + result.toPrettyString());
+                System.out.println("Færdigt gpt svar:\n" + result.toPrettyString());
                 return result;
 
             } catch (Exception e) {
-                System.err.println("❌ GPT trade generation failed: " + e.getMessage());
+                System.err.println("❌ Noget git galt under genereringen af gpt traden" + e.getMessage());
                 e.printStackTrace();
                 return null;
             }

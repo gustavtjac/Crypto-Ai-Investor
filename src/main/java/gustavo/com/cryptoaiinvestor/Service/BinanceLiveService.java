@@ -8,9 +8,7 @@ import gustavo.com.cryptoaiinvestor.DTO.OpenOrder;
 import gustavo.com.cryptoaiinvestor.Models.*;
 import gustavo.com.cryptoaiinvestor.Repository.CryptoRepository;
 import gustavo.com.cryptoaiinvestor.Repository.PastTradesRepository;
-import gustavo.com.cryptoaiinvestor.Repository.PriceHistoryRepository;
 import gustavo.com.cryptoaiinvestor.Repository.TradingStrategyRepository;
-import jakarta.persistence.GenerationType;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -57,7 +55,6 @@ public class BinanceLiveService {
         return info;
     }
 
-    // ✅ Reusable signed API call helper
     private JsonNode callSignedEndpoint(String endpoint, BinanceApiKey apiKey) throws Exception {
         long timestamp = System.currentTimeMillis();
         String query = "timestamp=" + timestamp;
@@ -84,7 +81,7 @@ public class BinanceLiveService {
         return mapper.readTree(response);
     }
 
-    // ✅ Uses callSignedEndpoint()
+
     private Map<String, Double> getBalance(BinanceApiKey binanceApiKey) {
         Map<String, Double> result = new HashMap<>();
         try {
@@ -111,7 +108,7 @@ public class BinanceLiveService {
         return result;
     }
 
-    // ✅ Uses callSignedEndpoint() for both positionRisk and openOrders
+
     private List<ActiveTrade> getActiveTrades(BinanceApiKey binanceApiKey) {
         List<ActiveTrade> trades = new ArrayList<>();
 
@@ -155,7 +152,6 @@ public class BinanceLiveService {
         return trades;
     }
 
-    // ✅ Uses callSignedEndpoint()
     private List<OpenOrder> getOpenOrders(BinanceApiKey binanceApiKey) {
         List<OpenOrder> orders = new ArrayList<>();
 
@@ -188,16 +184,15 @@ public class BinanceLiveService {
 
     public Object createNewTradeUsingGpt(User user) {
         try {
-            System.out.println("test 1");
             BinanceApiKey decrypted = binanceApiKeysService.getDeCryptedKeys(user.getBinanceApiKey());
-            JsonNode jsonNode = gptService.getTradeFromGpt();
+            JsonNode tradeFromGpt = gptService.getTradeFromGpt();
 
-            if (jsonNode == null) {
-                throw new RuntimeException("GPT returned null response");
+            if (tradeFromGpt == null) {
+                throw new RuntimeException("GPT gav et ikke gyldigt svar");
             }
 
-            JsonNode binanceTradeNode = jsonNode.path("binanceTrade");
-            JsonNode pastTradeNode = jsonNode.path("pastTrade");
+            JsonNode binanceTradeNode = tradeFromGpt.path("binanceTrade");
+            JsonNode pastTradeNode = tradeFromGpt.path("pastTrade");
 
             String symbol = binanceTradeNode.path("symbol").asText();
             String side = binanceTradeNode.path("side").asText();
@@ -206,13 +201,13 @@ public class BinanceLiveService {
             double stopLoss = binanceTradeNode.path("stopLoss").asDouble();
             double takeProfit = binanceTradeNode.path("takeProfit").asDouble();
 
-            // --- Build Binance client ---
+            // Byg en client til binance
             WebClient client = WebClient.builder()
                     .baseUrl(BASE_URL)
                     .defaultHeader("X-MBX-APIKEY", decrypted.getPublicKey())
                     .build();
 
-            // --- 1. Set leverage ---
+            // Bestemmer først leverage
             long timestamp = System.currentTimeMillis();
             String leverageQuery = "symbol=" + symbol + "&leverage=" + leverage + "&timestamp=" + timestamp;
             String leverageSig = binanceApiKeysService.sign(leverageQuery, decrypted.getPrivateKey());
@@ -221,9 +216,14 @@ public class BinanceLiveService {
                     .uri(uriBuilder -> uriBuilder.path("/fapi/v1/leverage").query(leverageQuery + "&signature=" + leverageSig).build())
                     .retrieve()
                     .bodyToMono(String.class)
+                    .onErrorResume(ex -> {
+                        System.err.println("Leverage fejlet: " + ex.getMessage());
+                        throw new RuntimeException("Kunne ikke sætte stop loss ordren går nu ikke igennem");
+                    })
                     .block();
+            System.out.println("LEVERAGE ER NUT SAT");
 
-            // --- 2. Place the main Market Order ---
+            // SÅ PLACERER DEN ORDREN
             timestamp = System.currentTimeMillis();
             String orderQuery = String.format(
                     "symbol=%s&side=%s&type=MARKET&quantity=%s&timestamp=%d",
@@ -237,17 +237,15 @@ public class BinanceLiveService {
                     .bodyToMono(String.class)
                     .onErrorResume(ex -> {
                         System.err.println("❌ Market order failed: " + ex.getMessage());
-                        return Mono.just("{}");
+                        throw new RuntimeException("Ordren gik ikke igennem");
                     })
                     .block();
 
-            if (response == null || response.isEmpty() || response.equals("{}")) {
-                throw new RuntimeException("Market order failed — no valid response from Binance.");
-            }
+
 
             System.out.println("✅ Market Order Executed: " + response);
 
-            // --- 3. Place Stop Loss and Take Profit orders ---
+            // SÆT STOP ORDER
             String oppositeSide = side.equalsIgnoreCase("BUY") ? "SELL" : "BUY";
 
             // Stop Loss
@@ -261,10 +259,13 @@ public class BinanceLiveService {
             String stopResponse = client.post()
                     .uri(uriBuilder -> uriBuilder.path("/fapi/v1/order").query(stopLossQuery + "&signature=" + stopLossSig).build())
                     .retrieve()
-                    .bodyToMono(String.class)
+                    .bodyToMono(String.class).onErrorResume(ex -> {
+                        throw new RuntimeException("Fejl under indsættelse af stoploss, Traden er nok gået i gennem alligevel");
+                    })
                     .block();
 
-            System.out.println("✅ Stop Loss order placed at " + stopLoss);
+
+            System.out.println("✅ Stop Loss sat på " + stopLoss);
 
             // ✅ Take Profit
             timestamp = System.currentTimeMillis();
@@ -275,14 +276,14 @@ public class BinanceLiveService {
                     symbol, oppositeSide, takeProfit, timestamp
             );
 
-// ✅ Sign the raw query
+
             String takeProfitSig = binanceApiKeysService.sign(takeProfitQuery, decrypted.getPrivateKey());
 
-// ✅ Build full URL manually — DO NOT use UriBuilder
+
             String finalTakeProfitUrl = "https://testnet.binancefuture.com/fapi/v1/order?" +
                     takeProfitQuery + "&signature=" + takeProfitSig;
 
-// ✅ Debug output
+
             System.out.println("🔍 Final TP URL: " + finalTakeProfitUrl);
 
             String tpResponse = client.post()
@@ -291,7 +292,7 @@ public class BinanceLiveService {
                     .onStatus(HttpStatusCode::isError, resp -> resp.bodyToMono(String.class)
                             .flatMap(body -> {
                                 System.err.println("❌ Binance TP error: " + body);
-                                return Mono.error(new RuntimeException("❌ Take Profit failed: " + body));
+                                return Mono.error(new RuntimeException("Kunne ikke lave Takeprofit, men ordren er stadig gået igennem"));
                             }))
                     .bodyToMono(String.class)
                     .block();
@@ -300,7 +301,7 @@ public class BinanceLiveService {
 
 
 
-            // --- 4. If all successful, save PastTrade ---
+            // Når alle er gået igennem så gemmer vi traden i en pasttrade
             int cryptoId = pastTradeNode.path("cryptoId").asInt();
             int strategyId = pastTradeNode.path("tradingStrategyId").asInt();
             double entryPrice = pastTradeNode.path("entryPrice").asDouble();
@@ -322,13 +323,12 @@ public class BinanceLiveService {
             pastTrade.setPositionType(positionType);
 
             pastTradesRepository.save(pastTrade);
-            System.out.println("💾 Saved PastTrade to database for " + symbol);
 
-            return mapper.readTree(response);
+            return tradeFromGpt;
 
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("❌ Trade creation failed: " + e.getMessage());
+            throw new RuntimeException("Fejl under oprrettelse af trade:" + e.getMessage());
         }
     }
 

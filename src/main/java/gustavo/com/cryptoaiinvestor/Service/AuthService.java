@@ -24,7 +24,6 @@ public class AuthService {
 
 
     public Map<String,Object> login(LoginRequest loginRequest) {
-
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                     loginRequest.getUsername(),
                     loginRequest.getPassword())
