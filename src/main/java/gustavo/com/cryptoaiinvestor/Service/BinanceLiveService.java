@@ -29,7 +29,13 @@ public class BinanceLiveService {
     private final PastTradesRepository pastTradesRepository;
     private final TradingStrategyRepository tradingStrategyRepository;
 
-    public BinanceLiveService(BinanceApiKeysService binanceApiKeysService, WebClient.Builder webClient, GptService gptService, CryptoRepository cryptoRepository, PastTradesRepository pastTradesRepository, TradingStrategyRepository tradingStrategyRepository) {
+    public BinanceLiveService(BinanceApiKeysService binanceApiKeysService,
+                              WebClient.Builder webClient,
+                              GptService gptService,
+                              CryptoRepository cryptoRepository,
+                              PastTradesRepository pastTradesRepository,
+                              TradingStrategyRepository tradingStrategyRepository) {
+
         this.binanceApiKeysService = binanceApiKeysService;
         this.webClient = webClient;
         this.gptService = gptService;
@@ -46,11 +52,8 @@ public class BinanceLiveService {
         info.setBalance(balanceAndPnl.get("balance"));
         info.setUnrealizedProfit(balanceAndPnl.get("unrealizedProfit"));
 
-        List<ActiveTrade> trades = getActiveTrades(decrypted);
-        info.setActiveTrades(trades);
-
-        List<OpenOrder> orders = getOpenOrders(decrypted);
-        info.setOpenOrders(orders);
+        info.setActiveTrades(getActiveTrades(decrypted));
+        info.setOpenOrders(getOpenOrders(decrypted));
 
         return info;
     }
@@ -73,14 +76,13 @@ public class BinanceLiveService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .onErrorResume(ex -> {
-                    System.err.println("❌ Error calling " + endpoint + ": " + ex.getMessage());
+                    System.err.println("Fejl ved kald til " + endpoint + ": " + ex.getMessage());
                     return Mono.just("[]");
                 })
                 .block();
 
         return mapper.readTree(response);
     }
-
 
     private Map<String, Double> getBalance(BinanceApiKey binanceApiKey) {
         Map<String, Double> result = new HashMap<>();
@@ -90,24 +92,21 @@ public class BinanceLiveService {
             if (jsonNode.isArray()) {
                 for (JsonNode node : jsonNode) {
                     if ("USDT".equalsIgnoreCase(node.path("asset").asText())) {
-                        double balance = node.path("crossWalletBalance").asDouble(0.0);
-                        double unrealizedPnL = node.path("crossUnPnl").asDouble(0.0);
-                        result.put("balance", balance);
-                        result.put("unrealizedProfit", unrealizedPnL);
+                        result.put("balance", node.path("crossWalletBalance").asDouble(0.0));
+                        result.put("unrealizedProfit", node.path("crossUnPnl").asDouble(0.0));
                         break;
                     }
                 }
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Exception in getBalance: " + e.getMessage());
+            System.err.println("Fejl i getBalance: " + e.getMessage());
         }
 
         result.putIfAbsent("balance", 0.0);
         result.putIfAbsent("unrealizedProfit", 0.0);
         return result;
     }
-
 
     private List<ActiveTrade> getActiveTrades(BinanceApiKey binanceApiKey) {
         List<ActiveTrade> trades = new ArrayList<>();
@@ -128,16 +127,15 @@ public class BinanceLiveService {
                 trade.setLeverage(pos.path("leverage").asInt());
                 trade.setPositionSide(posAmt > 0 ? "BUY" : "SELL");
 
-                // Match SL/TP
                 for (JsonNode order : ordersNodes) {
                     if (!order.path("symbol").asText().equals(trade.getSymbol())) continue;
 
                     String type = order.path("type").asText();
                     double price = order.path("stopPrice").asDouble(0.0);
 
-                    if ("STOP_MARKET".equals(type) || "STOP".equals(type)) {
+                    if (type.contains("STOP")) {
                         trade.setStopLoss(price);
-                    } else if ("TAKE_PROFIT_MARKET".equals(type) || "TAKE_PROFIT".equals(type)) {
+                    } else if (type.contains("TAKE_PROFIT")) {
                         trade.setTakeProfit(price);
                     }
                 }
@@ -146,7 +144,7 @@ public class BinanceLiveService {
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Error fetching active trades: " + e.getMessage());
+            System.err.println("Fejl ved hentning af aktive handler: " + e.getMessage());
         }
 
         return trades;
@@ -174,13 +172,11 @@ public class BinanceLiveService {
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Exception in getOpenOrders: " + e.getMessage());
+            System.err.println("Fejl i getOpenOrders: " + e.getMessage());
         }
 
         return orders;
     }
-
-
 
     public Object createNewTradeUsingGpt(User user) {
         try {
@@ -188,7 +184,7 @@ public class BinanceLiveService {
             JsonNode tradeFromGpt = gptService.getTradeFromGpt();
 
             if (tradeFromGpt == null) {
-                throw new RuntimeException("GPT gav et ikke gyldigt svar");
+                throw new RuntimeException("GPT returnerede et ugyldigt svar");
             }
 
             JsonNode binanceTradeNode = tradeFromGpt.path("binanceTrade");
@@ -201,29 +197,27 @@ public class BinanceLiveService {
             double stopLoss = binanceTradeNode.path("stopLoss").asDouble();
             double takeProfit = binanceTradeNode.path("takeProfit").asDouble();
 
-            // Byg en client til binance
             WebClient client = WebClient.builder()
                     .baseUrl(BASE_URL)
                     .defaultHeader("X-MBX-APIKEY", decrypted.getPublicKey())
                     .build();
 
-            // Bestemmer først leverage
+            // Sæt gearing
             long timestamp = System.currentTimeMillis();
             String leverageQuery = "symbol=" + symbol + "&leverage=" + leverage + "&timestamp=" + timestamp;
             String leverageSig = binanceApiKeysService.sign(leverageQuery, decrypted.getPrivateKey());
 
             client.post()
-                    .uri(uriBuilder -> uriBuilder.path("/fapi/v1/leverage").query(leverageQuery + "&signature=" + leverageSig).build())
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/fapi/v1/leverage")
+                            .query(leverageQuery + "&signature=" + leverageSig)
+                            .build())
                     .retrieve()
                     .bodyToMono(String.class)
-                    .onErrorResume(ex -> {
-                        System.err.println("Leverage fejlet: " + ex.getMessage());
-                        throw new RuntimeException("Kunne ikke sætte stop loss ordren går nu ikke igennem");
-                    })
+                    .onErrorResume(ex -> Mono.error(new RuntimeException("Kunne ikke sætte leverage")))
                     .block();
-            System.out.println("LEVERAGE ER NUT SAT");
 
-            // SÅ PLACERER DEN ORDREN
+            // Market order
             timestamp = System.currentTimeMillis();
             String orderQuery = String.format(
                     "symbol=%s&side=%s&type=MARKET&quantity=%s&timestamp=%d",
@@ -231,43 +225,38 @@ public class BinanceLiveService {
             );
             String orderSig = binanceApiKeysService.sign(orderQuery, decrypted.getPrivateKey());
 
-            String response = client.post()
-                    .uri(uriBuilder -> uriBuilder.path("/fapi/v1/order").query(orderQuery + "&signature=" + orderSig).build())
+            client.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/fapi/v1/order")
+                            .query(orderQuery + "&signature=" + orderSig)
+                            .build())
                     .retrieve()
                     .bodyToMono(String.class)
-                    .onErrorResume(ex -> {
-                        System.err.println("❌ Market order failed: " + ex.getMessage());
-                        throw new RuntimeException("Ordren gik ikke igennem");
-                    })
+                    .onErrorResume(ex -> Mono.error(new RuntimeException("Market order mislykkedes")))
                     .block();
 
-
-
-            System.out.println("✅ Market Order Executed: " + response);
-
-            // SÆT STOP ORDER
+            // Stop loss
             String oppositeSide = side.equalsIgnoreCase("BUY") ? "SELL" : "BUY";
-
-            // Stop Loss
             timestamp = System.currentTimeMillis();
+
             String stopLossQuery = String.format(
                     "symbol=%s&side=%s&type=STOP_MARKET&stopPrice=%s&closePosition=true&timestamp=%d",
                     symbol, oppositeSide, stopLoss, timestamp
             );
+
             String stopLossSig = binanceApiKeysService.sign(stopLossQuery, decrypted.getPrivateKey());
 
-            String stopResponse = client.post()
-                    .uri(uriBuilder -> uriBuilder.path("/fapi/v1/order").query(stopLossQuery + "&signature=" + stopLossSig).build())
+            client.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/fapi/v1/order")
+                            .query(stopLossQuery + "&signature=" + stopLossSig)
+                            .build())
                     .retrieve()
-                    .bodyToMono(String.class).onErrorResume(ex -> {
-                        throw new RuntimeException("Fejl under indsættelse af stoploss, Traden er nok gået i gennem alligevel");
-                    })
+                    .bodyToMono(String.class)
+                    .onErrorResume(ex -> Mono.error(new RuntimeException("Stop loss kunne ikke oprettes")))
                     .block();
 
-
-            System.out.println("✅ Stop Loss sat på " + stopLoss);
-
-            // ✅ Take Profit
+            // Take profit
             timestamp = System.currentTimeMillis();
 
             String takeProfitQuery = String.format(
@@ -276,68 +265,48 @@ public class BinanceLiveService {
                     symbol, oppositeSide, takeProfit, timestamp
             );
 
-
             String takeProfitSig = binanceApiKeysService.sign(takeProfitQuery, decrypted.getPrivateKey());
 
-
-            String finalTakeProfitUrl = "https://testnet.binancefuture.com/fapi/v1/order?" +
-                    takeProfitQuery + "&signature=" + takeProfitSig;
-
-
-            System.out.println("🔍 Final TP URL: " + finalTakeProfitUrl);
-
-            String tpResponse = client.post()
-                    .uri(finalTakeProfitUrl)
+            client.post()
+                    .uri("https://testnet.binancefuture.com/fapi/v1/order?" +
+                            takeProfitQuery + "&signature=" + takeProfitSig)
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, resp -> resp.bodyToMono(String.class)
-                            .flatMap(body -> {
-                                System.err.println("❌ Binance TP error: " + body);
-                                return Mono.error(new RuntimeException("Kunne ikke lave Takeprofit, men ordren er stadig gået igennem"));
-                            }))
+                    .onStatus(HttpStatusCode::isError, resp ->
+                            resp.bodyToMono(String.class).flatMap(body ->
+                                    Mono.error(new RuntimeException("Take profit kunne ikke oprettes"))
+                            ))
                     .bodyToMono(String.class)
                     .block();
 
-            System.out.println("✅ Take Profit order placed at " + takeProfit + " → " + tpResponse);
-
-
-
-            // Når alle er gået igennem så gemmer vi traden i en pasttrade
+            // Gem tradehistorik
             int cryptoId = pastTradeNode.path("cryptoId").asInt();
             int strategyId = pastTradeNode.path("tradingStrategyId").asInt();
-            double entryPrice = pastTradeNode.path("entryPrice").asDouble();
-            String profitAndStopLoss = pastTradeNode.path("profitAndStopLoss").asText();
-            String positionType = pastTradeNode.path("positionType").asText();
 
             Crypto crypto = cryptoRepository.findById(cryptoId)
-                    .orElseThrow(() -> new RuntimeException("Crypto not found: " + cryptoId));
+                    .orElseThrow(() -> new RuntimeException("Crypto ikke fundet: " + cryptoId));
+
             TradingStrategy strategy = tradingStrategyRepository.findById(strategyId)
-                    .orElseThrow(() -> new RuntimeException("Trading strategy not found: " + strategyId));
+                    .orElseThrow(() -> new RuntimeException("Strategi ikke fundet: " + strategyId));
 
             PastTrades pastTrade = new PastTrades();
             pastTrade.setCrypto(crypto);
             pastTrade.setTradingStrategy(strategy);
             pastTrade.setUser(user);
-            pastTrade.setEntryPrice(entryPrice);
+            pastTrade.setEntryPrice(pastTradeNode.path("entryPrice").asDouble());
             pastTrade.setEntryTime(LocalDateTime.now());
-            pastTrade.setProfitAndStopLoss(profitAndStopLoss);
-            pastTrade.setPositionType(positionType);
+            pastTrade.setProfitAndStopLoss(pastTradeNode.path("profitAndStopLoss").asText());
+            pastTrade.setPositionType(pastTradeNode.path("positionType").asText());
 
             pastTradesRepository.save(pastTrade);
 
             return tradeFromGpt;
 
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Fejl under oprrettelse af trade:" + e.getMessage());
+            throw new RuntimeException("Fejl under oprettelse af trade: " + e.getMessage());
         }
     }
 
-    // helper for consistent price precision
     private String formatPrice(double price) {
         return String.format(Locale.US, "%.8f", price);
     }
-
 }
-
-
-

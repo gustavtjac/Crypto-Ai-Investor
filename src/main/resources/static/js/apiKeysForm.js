@@ -91,7 +91,7 @@ function showAddApiKeyPrompt() {
     cancelBtn.textContent = "Annuller";
     cancelBtn.style.marginTop = "1rem";
 
-    // === Assemble ===
+
     container.appendChild(header);
     container.appendChild(info);
     container.appendChild(inputsHolder);

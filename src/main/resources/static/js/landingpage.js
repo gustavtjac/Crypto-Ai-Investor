@@ -5,32 +5,32 @@ import {createAskForApiKeys} from "./apiKeysForm.js";
 
 const app = document.getElementById("app")
 
-
-
 export async function loadLandingPage(popUpMsg) {
     const oldOverlay = document.querySelector(".login-overlay");
     if (oldOverlay) oldOverlay.remove();
     app.innerHTML = "";
 
+    // Viser en kort besked hvis siden blev åbnet med en notifikation
     if (popUpMsg){
-    showPopupMessage(popUpMsg)
+        showPopupMessage(popUpMsg)
     }
 
-    // --- HEADER ---
+    // --- TOPSEKTION (HEADER) ---
     const header = document.createElement("div");
     header.classList.add("header");
 
-    // Logo
+    // Logo i venstre side
     const logo = document.createElement("img");
     logo.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/183px-Bitcoin.svg.png";
     logo.alt = "Crypto Logo";
     logo.classList.add("header-logo");
     header.appendChild(logo);
 
-    // Button holder
+    // Holder til knapper i højre side
     const headerButtonHolder = document.createElement("div");
     headerButtonHolder.classList.add("header-buttons");
 
+    // Hvis ikke logget ind → vis Login/Signup
     if (isTokenExpired()) {
         await createLoginModule();
         const loginSignUpBtn = document.createElement("button");
@@ -41,68 +41,68 @@ export async function loadLandingPage(popUpMsg) {
             window.openLoginPopup();
         });
         headerButtonHolder.appendChild(loginSignUpBtn);
+
+        // Hvis logget ind → vis Dashboard + Logout
     } else {
         const goToDashBoardButton = document.createElement("button");
-        goToDashBoardButton.addEventListener("click",async function(){
-            return await createAskForApiKeys();
-        })
         goToDashBoardButton.textContent = "Dashboard";
         goToDashBoardButton.classList.add("header-btn", "dashboard-btn");
+        goToDashBoardButton.addEventListener("click", async function(){
+            return await createAskForApiKeys();
+        });
 
-
-        const logooutButton = createLogoutButton()
+        const logoutButton = createLogoutButton()
         headerButtonHolder.appendChild(goToDashBoardButton);
-        headerButtonHolder.appendChild(logooutButton)
+        headerButtonHolder.appendChild(logoutButton);
     }
 
     header.appendChild(headerButtonHolder);
     app.appendChild(header);
 
-
-    // --- HERO SECTION ---
-
+    // --- HERO-SEKTION MED TITEL OG KNAP ---
     const heroSection = document.createElement("div");
     heroSection.classList.add("hero-section");
 
-
-        // TITEL
+    // Titel i toppen
     const heroTitle = document.createElement("h1");
     heroTitle.textContent = "Gustavo Investor Bot";
     heroTitle.classList.add("hero-title");
-// crypto wheel
     heroSection.appendChild(heroTitle);
 
-        // Call-to-action
-    const ctaButton = document.createElement("button");
-    ctaButton.classList.add("cta-button");
-
-    if (isTokenExpired()) {
-        ctaButton.textContent = "Start Today";
-        ctaButton.addEventListener("click", async () => {
-            await createLoginModule();
-            window.openLoginPopup();
-        });
-        ctaButton.classList.add("start-btn");
-    } else {
-
-        ctaButton.textContent = "Go to Dashboard";
-        ctaButton.classList.add("dashboard-btn");
-        ctaButton.addEventListener("click", async function(){
-            return await createAskForApiKeys();
-        })
-    }
-
-    //div til hjul og description
+    // --- Midtersektion med hjul + beskrivelse ---
     const midHeroDiv = document.createElement("div")
     midHeroDiv.classList.add("mid-hero-div")
+
+    // 3D crypto-hjulet
     const cryptoWheel = await create3DCryptoWheel();
     midHeroDiv.appendChild(cryptoWheel)
+
+    // Lille forklaring om hvad siden gør
     const description = document.createElement("p")
     description.textContent = "Indtast din Binance api-nøgle → lad Gustavo handle for dig. Automatisk. Intelligent. 100% hands-free. 🔥 💸 😱";
     midHeroDiv.appendChild(description)
 
+    // --- CTA-knap (forskellig om man er logget ind eller ej) ---
+    const ctaButton = document.createElement("button");
+    ctaButton.classList.add("cta-button");
 
-// Append
+    if (isTokenExpired()) {
+        // Ikke logget ind → knap åbner login-popup
+        ctaButton.textContent = "Start Today";
+        ctaButton.classList.add("start-btn");
+        ctaButton.addEventListener("click", async () => {
+            await createLoginModule();
+            window.openLoginPopup();
+        });
+
+    } else {
+        // Logget ind → knap sender til dashboard
+        ctaButton.textContent = "Go to Dashboard";
+        ctaButton.classList.add("dashboard-btn");
+        ctaButton.addEventListener("click", async function(){
+            return await createAskForApiKeys();
+        });
+    }
 
     heroSection.appendChild(midHeroDiv)
     heroSection.appendChild(ctaButton);
@@ -117,39 +117,39 @@ export async function create3DCryptoWheel() {
     wheel.classList.add("wheel");
     wheelContainer.appendChild(wheel);
 
-    // --- Fetch cryptos ---
+    // Henter kryptovalutaer fra backend
     const response = await fetch("http://localhost:8080/api/cryptos/frontenddto");
     const cryptoList = await response.json();
 
-    // --- Create a card for each crypto ---
+    // Opret et lille kort for hver coin
     cryptoList.forEach((crypto) => {
         const card = document.createElement("div");
         card.classList.add("coin-card");
-        card.dataset.symbol = crypto.ticker.toLowerCase(); // ✅ Lowercase match for Binance
+        card.dataset.symbol = crypto.ticker.toLowerCase();
 
         card.innerHTML = `
-      <img src="${crypto.img || 'https://via.placeholder.com/64'}" alt="${crypto.name}" />
-      <span class="coin-symbol">${crypto.name}</span>
-      <span class="coin-price">$0.00</span>
-    `;
+            <img src="${crypto.img || 'https://via.placeholder.com/64'}" alt="${crypto.name}" />
+            <span class="coin-symbol">${crypto.name}</span>
+            <span class="coin-price">$0.00</span>
+        `;
         wheel.appendChild(card);
     });
 
-    // --- WebSocket connection ---
+    // Opret websocket-stream til live priser
     const streams = cryptoList
         .map((c) => `${c.ticker.toLowerCase()}@ticker`)
         .join("/");
 
     const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
 
-    // --- Live updates ---
+    // Opdater priser live i hjulet
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         const info = data.data;
 
         if (!info || !info.s) return;
 
-        const symbol = info.s.toLowerCase(); // ✅ Binance always sends uppercase symbols
+        const symbol = info.s.toLowerCase();
         const price = parseFloat(info.c).toPrecision(6);
 
         const card = wheel.querySelector(`[data-symbol="${symbol}"]`);
@@ -159,12 +159,11 @@ export async function create3DCryptoWheel() {
         }
     };
 
-    // Optional reconnect
+    // Genopret forbindelse hvis streamen falder ud
     ws.onclose = () => {
-        console.warn("WebSocket closed, reconnecting...");
+        console.warn("WebSocket lukket – forsøger igen...");
         setTimeout(create3DCryptoWheel, 5000);
     };
 
     return wheelContainer;
 }
-

@@ -3,9 +3,10 @@ import {loadLandingPage} from "./landingpage.js";
 export async function createLoginModule() {
     const oldOverlay = document.querySelector(".login-overlay");
     if (oldOverlay) oldOverlay.remove();
+
     let loginOrSignUp = true;
 
-    // Container til at holde det hele
+    // Overlayskærm der holder hele login-vinduet
     const overlay = document.createElement("div");
     overlay.classList.add("login-overlay", "hidden");
 
@@ -20,14 +21,13 @@ export async function createLoginModule() {
     headerText.textContent = "Login";
     loginForm.appendChild(headerText);
 
-    //div til at holde kanpper
+    // Knapper til at skifte mellem Login / Register
     const buttonHolder = document.createElement("div");
     buttonHolder.classList.add("button-holder");
 
     const chooseLoginBtn = document.createElement("button");
-    chooseLoginBtn.classList.add("login-btn");
+    chooseLoginBtn.classList.add("login-btn", "active");
     chooseLoginBtn.textContent = "Login";
-    chooseLoginBtn.classList.add("active");
     chooseLoginBtn.addEventListener("click", function () {
         loginOrSignUp = true;
         submitBtn.textContent = "Login";
@@ -51,31 +51,31 @@ export async function createLoginModule() {
     buttonHolder.appendChild(chooseRegisterButton);
     loginForm.appendChild(buttonHolder);
 
-    // Div til at holde inputs
+    // Inputs til brugernavn + kodeord
     const inputsHolder = document.createElement("div");
     inputsHolder.classList.add("inputs-holder");
 
     const message = document.createElement("h3");
     message.id = "message";
-    message.classList.add("message");
-    message.classList.add("hidden");
+    message.classList.add("message", "hidden");
     inputsHolder.appendChild(message);
 
     const usernameInput = document.createElement("input");
     usernameInput.classList.add("input-field");
     usernameInput.placeholder = "username";
     usernameInput.type = "text";
-    inputsHolder.appendChild(usernameInput);
 
     const passwordInput = document.createElement("input");
     passwordInput.classList.add("input-field");
     passwordInput.type = "password";
     passwordInput.placeholder = "password";
+
+    inputsHolder.appendChild(usernameInput);
     inputsHolder.appendChild(passwordInput);
 
     loginForm.appendChild(inputsHolder);
 
-    //submit knap
+    // Knap til at sende login / register
     const submitBtn = document.createElement("button");
     submitBtn.classList.add("submit-btn");
     submitBtn.textContent = "Login";
@@ -91,22 +91,26 @@ export async function createLoginModule() {
                 passwordInput.value
             );
 
-
+            // Hvis login
             if (loginOrSignUp === true){
-                const succesMessage = "✅ Du er nu logget ind " + data.username + "!"
-                messageBox.textContent = succesMessage
+                const succesMessage = "✅ Du er nu logget ind " + data.username + "!";
+                messageBox.textContent = succesMessage;
                 messageBox.classList.remove("error");
                 messageBox.classList.add("success");
-                localStorage.setItem("token",data.token)
+
+                localStorage.setItem("token", data.token);
+
                 return await loadLandingPage(succesMessage);
-            }else {
-                const succesMessage = "✅ "+data + "👽"
-                messageBox.textContent = succesMessage
+
+                // Hvis register
+            } else {
+                const succesMessage = "✅ " + data + " 👽";
+                messageBox.textContent = succesMessage;
                 messageBox.classList.remove("error");
                 messageBox.classList.add("success");
+
                 return await loadLandingPage(succesMessage);
             }
-
 
         } catch (error) {
             messageBox.textContent = "❌ " + error.message;
@@ -120,17 +124,17 @@ export async function createLoginModule() {
     overlay.appendChild(loginFormContainer);
     document.body.appendChild(overlay);
 
-    // vis popup
+    // Åbn popup
     window.openLoginPopup = function() {
         overlay.classList.remove("hidden");
     };
 
-    // fjern popup
+    // Luk popup
     window.closeLoginPopup = function() {
         overlay.classList.add("hidden");
     };
 
-    // luk når man klikker udenfor popuip
+    // Luk hvis man klikker udenfor
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
             closeLoginPopup();
@@ -139,6 +143,7 @@ export async function createLoginModule() {
 }
 
 async function authenticateUser(loginOrSignUp, username, password) {
+    // Vælg rigtige endpoint afhængigt af login/register
     const url = loginOrSignUp
         ? "http://localhost:8080/api/auth/login"
         : "http://localhost:8080/api/users";
@@ -146,29 +151,24 @@ async function authenticateUser(loginOrSignUp, username, password) {
     try {
         const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username,
-                password
-            })
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ username, password })
         });
 
+        // Hvis fejl fra backend
         if (!response.ok) {
             const errorMessage = await response.text();
             throw new Error(errorMessage);
         }
 
-        let data;
-
+        // Ved login → backend sender JSON
         if (loginOrSignUp) {
-            data = await response.json();
-        } else {
-            data = await response.text();
+            return await response.json();
         }
 
-        return data;
+        // Ved register → backend sender tekst
+        return await response.text();
+
     } catch (error) {
         console.error("Authentication failed:", error);
         throw error;

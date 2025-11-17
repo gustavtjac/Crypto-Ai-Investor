@@ -6,6 +6,7 @@ export async function loadDashBoard() {
     const app = document.getElementById("app");
     app.innerHTML = "";
 
+    // Tjek om token stadig er gyldig
     if (isTokenExpired()) {
         return await loadLandingPage("Din token er udløbet");
     }
@@ -13,7 +14,7 @@ export async function loadDashBoard() {
     const markWs = {};
     const positions = {};
 
-    // === Loading overlay ===
+    // Simpel loadingskærm mens data hentes
     const loadingOverlay = document.createElement("div");
     loadingOverlay.classList.add("loading-overlay");
 
@@ -28,11 +29,11 @@ export async function loadDashBoard() {
     loadingOverlay.appendChild(loadingBar);
     app.appendChild(loadingOverlay);
 
-    // === Dashboard container ===
+    // Hovedcontainer til dashboardet
     const dashboardContainer = document.createElement("div");
     dashboardContainer.classList.add("dashboard-container");
 
-    // --- Header ---
+    // Topsektion med tilbageknap og konto-info
     const headerDiv = document.createElement("div");
     headerDiv.classList.add("dashboard-header");
 
@@ -45,7 +46,7 @@ export async function loadDashBoard() {
     headerDiv.appendChild(backButton);
     dashboardContainer.appendChild(headerDiv);
 
-    // --- Balance & PnL ---
+    // Viser balance og samlet PnL
     const balanceContainer = document.createElement("div");
     balanceContainer.classList.add("balance-container");
 
@@ -69,11 +70,11 @@ export async function loadDashBoard() {
     balanceContainer.appendChild(pnlLabel);
     headerDiv.appendChild(balanceContainer);
 
-    // === Table & Chart Section ===
+    // Sektion der indeholder både tabel og graf
     const tableGraphContainer = document.createElement("div");
     tableGraphContainer.classList.add("table-graph-container");
 
-    // --- Trades Table ---
+    // Tabel med aktive handler
     const tableWrapper = document.createElement("div");
     tableWrapper.classList.add("table-wrapper");
 
@@ -108,7 +109,7 @@ export async function loadDashBoard() {
     tableWrapper.appendChild(table);
     tableGraphContainer.appendChild(tableWrapper);
 
-    // --- Graph Container ---
+    // Graf over balance
     const chartContainer = document.createElement("div");
     chartContainer.classList.add("chart-container");
     const canvas = document.createElement("canvas");
@@ -119,7 +120,7 @@ export async function loadDashBoard() {
     dashboardContainer.appendChild(tableGraphContainer);
     app.appendChild(dashboardContainer);
 
-    // === GPT Button ===
+    // Knap til at lade GPT lave en handel
     const gptDiv = document.createElement("div");
     gptDiv.classList.add("gpt-div");
 
@@ -127,9 +128,9 @@ export async function loadDashBoard() {
     gptMakeTrade.classList.add("gpt-trade-btn");
     gptMakeTrade.textContent = "Tjen mig nogle penge hr. GPT 🤑🤖";
     gptMakeTrade.addEventListener("click", async function () {
-        const svar = confirm("Er du sikker på du vil lade hr. GPT investere for dig :)");
+        const svar = confirm("Er du sikker på du vil lade hr. GPT investere for dig?");
         if (!svar) {
-            return showPopupMessage("Ingen investering blev fortaget");
+            return showPopupMessage("Ingen handel blev udført");
         }
 
         const response = await authorizedFetch("http://localhost:8080/api/binance/newtrade", {
@@ -153,17 +154,16 @@ Mængde: ${trade.quantity} BTC med ${trade.leverage}x gearing.
 Take Profit: $${trade.takeProfit.toLocaleString()}
 Stop Loss: $${trade.stopLoss.toLocaleString()}
 
-Selvtillid: ${(trade.confidence * 100).toFixed(0)}% 😎  
-Det her kan enten blive champagne 💸 eller tårer 🫠
+Selvtillid: ${(trade.confidence * 100).toFixed(0)}% 😎
 `;
 
-        return showNewTrade("GPT gjorde det igen 💰💵", message);
+        return showNewTrade("GPT har lavet en ny handel 💰", message);
     });
 
     gptDiv.appendChild(gptMakeTrade);
     dashboardContainer.appendChild(gptDiv);
 
-    // === Chart setup ===
+    // Opsætning af graf
     let balanceHistory = [];
     let chart = null;
 
@@ -209,13 +209,12 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
 
     initBalanceChart();
 
-    // === Load account info ===
-
+    // Hent account info og opdater alt løbende
     await loadAccountInfo();
-    loadingOverlay.remove(); // remove loader after first load
+    loadingOverlay.remove();
     setInterval(loadAccountInfo, 3000);
 
-    // === Update chart every minute ===
+    // Opdater grafen med jævne mellemrum
     setInterval(() => {
         updateBalanceChart(parseFloat(document.getElementById("balance-value").textContent));
     }, 30000);
@@ -230,10 +229,10 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
             balanceValue.textContent = data.balance.toFixed(2);
 
             activeTrades.forEach((p) => {
-                console.log(parseFloat(p.positionAmt))
                 const symbol = p.symbol;
                 const amount = parseFloat(p.positionAmt);
 
+                // Opret ny række hvis det er en ny position
                 if (!positions[symbol]) {
                     positions[symbol] = {
                         symbol,
@@ -249,29 +248,23 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
                     createRow(positions[symbol]);
                     listenToMarkPrice(symbol);
                 } else {
-                    positions[symbol].positionAmt = parseFloat(p.positionAmt); // ✅ refresh position size
+                    // Opdater eksisterende position
+                    positions[symbol].positionAmt = amount;
                     positions[symbol].unrealizedPnL = parseFloat(p.unrealizedProfit);
                     positions[symbol].stopLoss = p.stopLoss ?? null;
                     positions[symbol].takeProfit = p.takeProfit ?? null;
-
-                    const markPrice = positions[symbol].markPrice;
-                    if (markPrice) {
-                        const posCell = document.getElementById(`position-${symbol}`);
-                        if (posCell) {
-                            const notional = Math.abs(positions[symbol].positionAmt * markPrice);
-                            posCell.textContent = notional.toFixed(2);
-                        }
-                    }
 
                     updatePnLCell(symbol);
                 }
             });
 
+            // Fjern rækker for handler der ikke længere findes
             Object.keys(positions).forEach((symbol) => {
                 if (!activeTrades.find((p) => p.symbol === symbol)) {
                     const row = document.getElementById(`row-${symbol}`);
                     if (row) row.remove();
                     delete positions[symbol];
+
                     if (markWs[symbol]) {
                         markWs[symbol].close();
                         delete markWs[symbol];
@@ -281,7 +274,7 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
 
             updateAccountPnL();
         } catch (err) {
-            console.error("❌ Failed to load Binance account info:", err);
+            console.error("Fejl ved hentning af konto-info:", err);
         }
     }
 
@@ -299,7 +292,7 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
         const symbolTd = makeCell(null, pos.symbol);
         const sideTd = makeCell(null, pos.side);
         const posTd = makeCell(`position-${pos.symbol}`, "–");
-        const levTd = makeCell(null, pos.leverage + "x" ?? "-");
+        const levTd = makeCell(null, pos.leverage + "x");
         const entryTd = makeCell(null, pos.entryPrice.toFixed(2));
         const markTd = makeCell(`mark-${pos.symbol}`, "–");
         const pnlTd = makeCell(`pnl-${pos.symbol}`, pos.unrealizedPnL.toFixed(4));
@@ -328,6 +321,7 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
         pnlValue.style.color = total >= 0 ? "limegreen" : "red";
     }
 
+    // Lyt på live mark price for hver position
     function listenToMarkPrice(symbol) {
         if (markWs[symbol]) return;
 
@@ -351,8 +345,8 @@ Det her kan enten blive champagne 💸 eller tårer 🫠
             }
         };
 
-        ws.onclose = () => console.warn(`⚠️ WS closed for ${symbol}`);
-        ws.onerror = (err) => console.error(`❌ WS error for ${symbol}:`, err);
+        ws.onclose = () => console.warn(`WS lukket for ${symbol}`);
+        ws.onerror = (err) => console.error(`WS fejl for ${symbol}:`, err);
 
         markWs[symbol] = ws;
     }
