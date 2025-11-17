@@ -1,3 +1,4 @@
+import {loadLandingPage} from "./landingpage.js";
 
 
 export function showPopupMessage(popUpMsg) {
@@ -100,3 +101,19 @@ style.innerHTML = `
 }`;
 document.head.appendChild(style);
 
+
+export function createLogoutButton() {
+    const btn = document.createElement("button");
+    btn.id = "logoutBtn";
+    btn.textContent = "Logout";
+    btn.style.cursor = "pointer";
+
+    btn.addEventListener("click", logout);
+    return btn
+}
+async function logout() {
+
+    localStorage.removeItem("token");
+
+    return await loadLandingPage("Du er nu logget ud 🫨🫨")
+}

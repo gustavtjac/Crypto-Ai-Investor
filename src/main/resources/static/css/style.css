@@ -550,7 +550,39 @@ text-align: center;
     to { opacity: 1; }
 }
 
-/* === Modernized Trade Table === */
+#logoutBtn {
+    padding: 10px 20px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    /* Smooth animation */
+    transition: background-color 0.25s ease, transform 0.2s ease;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Hover effect */
+#logoutBtn:hover {
+    background-color: #ff1a1a;
+    transform: translateY(-2px);
+}
+
+/* Pressed effect */
+#logoutBtn:active {
+    transform: translateY(0);
+}
+
+/* Optional placement */
+.logout-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+}
+
 .trade-table {
     width: 100%;
     border-collapse: collapse;

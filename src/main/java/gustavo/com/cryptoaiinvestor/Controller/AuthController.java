@@ -39,8 +39,8 @@ return ResponseEntity.status(HttpStatus.OK).body(authService.login(loginRequest)
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        gustavo.com.cryptoaiinvestor.Models.User user =
-                (gustavo.com.cryptoaiinvestor.Models.User) authentication.getPrincipal();
+
+      User user = (User) authentication.getPrincipal();
 
         Map<String, Object> response = Map.of(
                 "id", user.getId(),

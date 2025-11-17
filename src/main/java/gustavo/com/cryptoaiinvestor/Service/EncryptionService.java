@@ -23,6 +23,7 @@ public class EncryptionService {
             cipher.init(Cipher.ENCRYPT_MODE, key);
             return Base64.getEncoder().encodeToString(cipher.doFinal(value.getBytes()));
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Error encrypting data", e);
         }
     }

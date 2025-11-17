@@ -1,5 +1,6 @@
 package gustavo.com.cryptoaiinvestor.Service;
 
+import gustavo.com.cryptoaiinvestor.DTO.LoginRequest;
 import gustavo.com.cryptoaiinvestor.Models.BinanceApiKey;
 import gustavo.com.cryptoaiinvestor.Models.User;
 import gustavo.com.cryptoaiinvestor.Repository.UserRepository;
@@ -15,13 +16,15 @@ public class UserService implements UserDetailsService {
 private final BinanceApiKeysService binanceApiKeysService;
 private final UserRepository userRepository;
 private final EncryptionService encryptionService;
+private final PasswordEncoder passwordEncoder;
 
 
 
-    public UserService(BinanceApiKeysService binanceApiKeysService, UserRepository userRepository, EncryptionService encryptionService) {
+    public UserService(BinanceApiKeysService binanceApiKeysService, UserRepository userRepository, EncryptionService encryptionService, PasswordEncoder passwordEncoder) {
         this.binanceApiKeysService = binanceApiKeysService;
         this.userRepository = userRepository;
         this.encryptionService = encryptionService;
+        this.passwordEncoder = passwordEncoder;
     }
 
 
@@ -46,5 +49,18 @@ private final EncryptionService encryptionService;
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    public String createNewUser(LoginRequest user) {
+        User userToBeSaved = new User();
+        userToBeSaved.setUsername(user.getUsername());
+        if (userRepository.existsByUsername(user.getUsername())) {
+           throw new RuntimeException("Username already exists, please try another");
+        }
+        userToBeSaved.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        userToBeSaved.setRole("ROLE_USER");
+        userRepository.save(userToBeSaved);
+        return "User Created, Please log in now";
     }
 }

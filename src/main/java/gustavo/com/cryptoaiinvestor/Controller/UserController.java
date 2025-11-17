@@ -1,4 +1,5 @@
 package gustavo.com.cryptoaiinvestor.Controller;
+import gustavo.com.cryptoaiinvestor.DTO.LoginRequest;
 import gustavo.com.cryptoaiinvestor.Models.BinanceApiKey;
 import gustavo.com.cryptoaiinvestor.Models.User;
 import gustavo.com.cryptoaiinvestor.Service.UserService;
@@ -45,5 +46,19 @@ public ResponseEntity<?> checkIfUserHasApiKey(Authentication authentication) {
                 (gustavo.com.cryptoaiinvestor.Models.User) authentication.getPrincipal();
         return ResponseEntity.status(200).body(user.getBinanceApiKey() != null);
     }
+
+    @PostMapping("")
+    public ResponseEntity<?> createNewUser(@RequestBody LoginRequest user){
+
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(userService.createNewUser(user));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+
+    }
+
+
 
 }

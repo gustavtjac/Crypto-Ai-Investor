@@ -1,6 +1,6 @@
 import {isTokenExpired} from "./securityMethods.js";
 import {createLoginModule} from "./loginmodule.js";
-import {showPopupMessage} from "./reusableFunctions.js";
+import {createLogoutButton, showPopupMessage} from "./reusableFunctions.js";
 import {createAskForApiKeys} from "./apiKeysForm.js";
 
 const app = document.getElementById("app")
@@ -48,7 +48,11 @@ export async function loadLandingPage(popUpMsg) {
         })
         goToDashBoardButton.textContent = "Dashboard";
         goToDashBoardButton.classList.add("header-btn", "dashboard-btn");
+
+
+        const logooutButton = createLogoutButton()
         headerButtonHolder.appendChild(goToDashBoardButton);
+        headerButtonHolder.appendChild(logooutButton)
     }
 
     header.appendChild(headerButtonHolder);

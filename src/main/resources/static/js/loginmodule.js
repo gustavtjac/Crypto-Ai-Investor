@@ -91,13 +91,23 @@ export async function createLoginModule() {
                 passwordInput.value
             );
 
-            const succesMessage = "✅ Du er nu logget ind " + data.username + "!"
 
-            messageBox.textContent = succesMessage
-            messageBox.classList.remove("error");
-            messageBox.classList.add("success");
-            localStorage.setItem("token",data.token)
-            return await loadLandingPage(succesMessage);
+            if (loginOrSignUp === true){
+                const succesMessage = "✅ Du er nu logget ind " + data.username + "!"
+                messageBox.textContent = succesMessage
+                messageBox.classList.remove("error");
+                messageBox.classList.add("success");
+                localStorage.setItem("token",data.token)
+                return await loadLandingPage(succesMessage);
+            }else {
+                const succesMessage = "✅ "+data + "👽"
+                messageBox.textContent = succesMessage
+                messageBox.classList.remove("error");
+                messageBox.classList.add("success");
+                return await loadLandingPage(succesMessage);
+            }
+
+
         } catch (error) {
             messageBox.textContent = "❌ " + error.message;
             messageBox.classList.remove("success");
@@ -131,7 +141,7 @@ export async function createLoginModule() {
 async function authenticateUser(loginOrSignUp, username, password) {
     const url = loginOrSignUp
         ? "http://localhost:8080/api/auth/login"
-        : "http://localhost:8080/api/auth/signup";
+        : "http://localhost:8080/api/users";
 
     try {
         const response = await fetch(url, {
@@ -146,12 +156,18 @@ async function authenticateUser(loginOrSignUp, username, password) {
         });
 
         if (!response.ok) {
-            const errorMessage = await response.text(); // or response.json() if backend returns JSON
+            const errorMessage = await response.text();
             throw new Error(errorMessage);
         }
 
-        const data = await response.json();
-        console.log("Response:", data);
+        let data;
+
+        if (loginOrSignUp) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+        }
+
         return data;
     } catch (error) {
         console.error("Authentication failed:", error);
