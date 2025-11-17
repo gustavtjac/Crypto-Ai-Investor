@@ -41,7 +41,9 @@ export async function loadDashBoard() {
     backButton.src = "pictures/backbutton.png";
     backButton.alt = "Back";
     backButton.classList.add("back-button");
-    backButton.addEventListener("click", async () => loadLandingPage());
+    backButton.addEventListener("click", async function(){
+        return await loadLandingPage()
+    });
 
     headerDiv.appendChild(backButton);
     dashboardContainer.appendChild(headerDiv);

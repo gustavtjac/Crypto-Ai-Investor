@@ -84,19 +84,46 @@ public class GptService {
 
             // GPT prompt – kort og uden floromvundet tekst
             String prompt = """
-                    You are a Binance Futures trader using the following internal data:
+        You are a professional crypto trader using Binance Futures.
+        You have access to the following internal data:
 
-                    Trading strategies:
-                    %s
+        Trading strategies (with IDs):
+        %s
 
-                    Price history (10 latest per crypto):
-                    %s
+        Recent crypto price history (latest 10 entries per crypto, with IDs):
+        %s
 
-                    Create ONE trade based on the data. 
-                    Keep it short-term (5–20 min). 
-                    Use JSON only, no extra text.
-                    """.formatted(strategyText, priceText);
+        Based on this data, generate One trade setup. Your trades are meant for short term gain 5-20 minute trades. The more confident you are the more leverage you should use. Dont be afraid to also do some  riskier trading.
+        Be honest and take some risks!!!
+        Use your vast knowledge on the crypto market to make the most profitable trade.
+       
+        dont be scared to use lesser known / secure coins if you see potential in them.
 
+        Return ONLY valid JSON with two top-level objects:
+        {
+          "binanceTrade": {
+            "symbol": " TICKERUSDT, (Use any of the Tickers from the list above, Use the one you have most confidence in) ",
+            "side": "BUY" or "SELL",
+            "entryPrice": (float),
+            "leverage": (integer between 1 and 20),
+            "quantity": (float, small lot size),
+            "stopLoss": (float),
+            "takeProfit": (float),
+            "confidence": (float between 0.0 and 1.0)
+          },
+          "pastTrade": {
+            "cryptoId": (Id of the crypto used for the trade),
+            "tradingStrategyId": (Trading strategy used for the trade),
+            "entryPrice": (Same as for binance trade),
+            "profitAndStopLoss": "text summary of TP/SL from binanceTrade object",
+            "positionType": "LONG" or "SHORT"
+          }
+        }
+
+        Do NOT include explanations, markdown, or any extra text outside the JSON.
+        """.formatted(strategyText, priceText);
+
+            System.out.println(prompt);
             // Kald OpenAI API
             String response = webClient
                     .post()
@@ -136,6 +163,7 @@ public class GptService {
 
             JsonNode result = mapper.readTree(content);
 
+            System.out.println(result);
             if (!result.has("binanceTrade") || !result.has("pastTrade")) {
                 throw new RuntimeException("GPT svaret mangler forventede felter");
             }
